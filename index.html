@@ -136,8 +136,7 @@ main > .wrap{padding-left:0;padding-right:0}
   letter-spacing:0.012em;color:var(--ink);word-break:break-word;
   transition:color .35s ease;
 }
-.item.done .txt{
-  color:var(--dim);text-decoration:line-through;
+.item.done .txt{  color:var(--dim);text-decoration:line-through;
   text-decoration-color:var(--rule);text-decoration-thickness:1px;
 }
 /* meta marker: notes / sub-item progress */
@@ -152,11 +151,39 @@ main > .wrap{padding-left:0;padding-right:0}
   background:var(--gold);opacity:0.7;
 }
 .meta .frac{color:var(--muted)}
+.meta .wtag{
+  text-transform:uppercase;letter-spacing:0.16em;
+  font-size:0.52rem;color:var(--gold);opacity:0.75;
+}
 .chev{
   flex-shrink:0;margin-top:5px;width:6px;height:10px;opacity:0.35;
   transition:opacity .3s ease;
 }
 .body:hover .chev{opacity:0.7}
+
+/* ---------- waiting state: present but receded ---------- */
+.item.waiting{opacity:0.52}
+.item.waiting .txt{color:var(--muted);font-style:italic}
+.item.waiting .box{
+  border-color:var(--hair);
+  border-style:dashed;
+}
+.item.waiting:hover{opacity:0.78}
+.item.waiting .chev{opacity:0.2}
+
+/* divider introducing the waiting group */
+.tierrule{
+  display:flex;align-items:center;gap:0.9rem;
+  padding:1.5rem var(--gut) 0.55rem;
+}
+.tierrule::after{
+  content:'';flex:1;height:1px;background:var(--hair);
+}
+.tierrule span{
+  font-family:'Jost',sans-serif;font-weight:300;
+  text-transform:uppercase;letter-spacing:0.22em;
+  font-size:0.55rem;color:var(--dim);white-space:nowrap;
+}
 
 /* ---------- empty ---------- */
 .empty{padding:4.5rem 2.6rem;text-align:center;animation:in .5s ease both}
@@ -266,6 +293,37 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 
 /* sync setup form */
 #syncSheet{z-index:55}
+#tabSheet{z-index:56}
+
+/* manage lists */
+.tablist{display:flex;flex-direction:column;margin-bottom:0.4rem}
+.tabrow{
+  display:flex;align-items:center;gap:0.8rem;
+  padding:0.75rem 0;border-top:1px solid var(--hair);
+}
+.tabrow:last-child{border-bottom:1px solid var(--hair)}
+.tabrow input{
+  flex:1;background:none;border:none;outline:none;
+  font-family:'Jost',sans-serif;font-weight:300;color:var(--ink);
+  font-size:16px;letter-spacing:0.03em;padding:0.1rem 0;
+  border-bottom:1px solid transparent;
+  transition:border-color .3s ease;
+}
+.tabrow input:focus{border-bottom-color:var(--rule)}
+.tabrow .cnt{
+  font-size:0.58rem;letter-spacing:0.14em;color:var(--dim);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.tabbtn{
+  background:none;border:none;color:var(--dim);cursor:pointer;
+  padding:0.25rem 0.3rem;font-size:0.95rem;line-height:1;
+  font-family:'Jost',sans-serif;font-weight:300;
+  transition:color .3s ease;
+}
+.tabbtn:hover,.tabbtn:active{color:var(--gold)}
+.tabbtn.rm:hover,.tabbtn.rm:active{color:#C08A7E}
+.tabbtn[disabled]{opacity:0.22;cursor:default}
+.tabbtn[disabled]:hover{color:var(--dim)}
 .syncform{display:flex;flex-direction:column}
 .synclabel{
   font-family:'Jost',sans-serif;font-weight:400;
@@ -404,7 +462,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 }
 .subadd input::placeholder{color:var(--dim);font-size:0.9rem}
 
-.dtools{padding:2.4rem var(--gut) 0}
+.dtools{padding:2.4rem var(--gut) 0;display:flex;flex-direction:column;align-items:flex-start;gap:0.2rem}
 .dtools button{
   background:none;border:none;color:var(--dim);cursor:pointer;
   font-family:'Jost',sans-serif;font-weight:300;
@@ -439,7 +497,8 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   main{padding-bottom:0;display:flex}
   main > .wrap{display:flex;flex-direction:column}
   .board{
-    display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+    display:grid;
+    grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));
     align-items:stretch;border-top:1px solid var(--hair);
     flex:1;min-height:0;
   }
@@ -532,6 +591,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
     <button class="act" id="pullBtn" style="display:none">Pull from cloud<small>Replaces everything here with the cloud copy</small></button>
     <button class="act" id="syncSetup">Set up sync<small id="syncSetupSub">Sync between phone and computer</small></button>
 
+    <button class="act" id="manageTabs">Manage lists<small id="manageTabsSub">Add, rename or remove tabs</small></button>
     <button class="act" id="exp">Save a backup<small>Downloads every list as a file</small></button>
     <button class="act" id="imp">Restore from backup<small>Replaces everything currently stored</small></button>
     <div class="stamp" id="stamp"></div>
@@ -540,6 +600,20 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 <input type="file" id="file" accept="application/json,.json">
 
 <!-- sync setup panel -->
+<!-- tab management panel -->
+<div class="sheet" id="tabSheet">
+  <div class="wrap">
+    <h2>Lists</h2>
+    <div id="tabList" class="tablist"></div>
+    <div class="subadd" style="padding-left:0;padding-right:0">
+      <div class="plus"></div>
+      <input id="newTabIn" type="text" placeholder="Add a list" autocomplete="off" enterkeyhint="done">
+    </div>
+    <div class="syncmsg" id="tabMsg"></div>
+    <button class="act" id="tabBack"><small>Done</small></button>
+  </div>
+</div>
+
 <div class="sheet" id="syncSheet">
   <div class="wrap">
     <h2>Sync setup</h2>
@@ -571,11 +645,17 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const TABS = ['Fundamental','Lumina','BGIP','Personal'];
+const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 const KEY  = 'ledger.v1';
+const TABKEY = KEY + '.tabs';
 const WIDE = window.matchMedia('(min-width:1000px)');
 
+/* TABS is now user-managed. It is derived from saved tab order, but any
+   tab found in stored data is always kept so items can never be orphaned. */
+let TABS = loadTabs();
 let data = load();
+reconcileTabs();
+
 let active = localStorage.getItem(KEY + '.tab') || TABS[0];
 if(!TABS.includes(active)) active = TABS[0];
 
@@ -583,22 +663,42 @@ if(!TABS.includes(active)) active = TABS[0];
 let openTab = null;
 let openItem = null;
 
+function loadTabs(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(TABKEY) || 'null');
+    if(Array.isArray(saved) && saved.length) return saved.filter(t => typeof t === 'string' && t.trim());
+  }catch(e){}
+  return DEFAULT_TABS.slice();
+}
+
+/* Load every list present in storage, not just the known tabs, so nothing
+   is ever silently dropped. */
 function load(){
   const out = {};
   TABS.forEach(t => out[t] = []);
   try{
     const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
-    TABS.forEach(t => {
+    Object.keys(raw).forEach(t => {
       if(Array.isArray(raw[t])) out[t] = raw[t].map(normalize);
     });
   }catch(e){}
   return out;
 }
-/* ensure every item has the new fields */
+
+/* Any tab that has data but isn't in the tab list gets appended, and any
+   listed tab without data gets an empty list. Guarantees they stay in step. */
+function reconcileTabs(){
+  Object.keys(data).forEach(t => { if(!TABS.includes(t)) TABS.push(t); });
+  TABS.forEach(t => { if(!Array.isArray(data[t])) data[t] = []; });
+  if(!TABS.length){ TABS = DEFAULT_TABS.slice(); TABS.forEach(t => data[t] = data[t] || []); }
+}
+
+/* ensure every item has the current fields; older items just gain defaults */
 function normalize(it){
   return {
     t: it.t || '',
     done: !!it.done,
+    wait: !!it.wait,
     notes: typeof it.notes === 'string' ? it.notes : '',
     subs: Array.isArray(it.subs) ? it.subs.map(s => ({t: s.t || '', done: !!s.done})) : []
   };
@@ -606,6 +706,7 @@ function normalize(it){
 function save(){
   try{
     localStorage.setItem(KEY, JSON.stringify(data));
+    localStorage.setItem(TABKEY, JSON.stringify(TABS));
     localStorage.setItem(KEY + '.tab', active);
   }catch(e){}
 }
@@ -624,36 +725,108 @@ const detail   = document.getElementById('detail');
 const dbody    = document.getElementById('dbody');
 const dtabname = document.getElementById('dtabname');
 
-function openCount(tab){ return data[tab].filter(i => !i.done).length; }
+/* Adopt an incoming set of lists (from cloud or a backup file) without
+   dropping any list it contains. Tab order follows the incoming order,
+   with any extra local tabs appended. */
+function adoptLists(lists, order){
+  const next = {};
+  const incoming = Object.keys(lists).filter(k => Array.isArray(lists[k]));
+  incoming.forEach(k => next[k] = lists[k].map(normalize));
+  const newTabs = [];
+  (Array.isArray(order) ? order : []).forEach(t => {
+    if(incoming.includes(t) && !newTabs.includes(t)) newTabs.push(t);
+  });
+  incoming.forEach(t => { if(!newTabs.includes(t)) newTabs.push(t); });
+  if(!newTabs.length) return false;
+  data = next;
+  TABS = newTabs;
+  reconcileTabs();
+  if(!TABS.includes(active)) active = TABS[0];
+  return true;
+}
+
+function openCount(tab){ return (data[tab]||[]).filter(i => !i.done && !i.wait).length; }
+function waitCount(tab){ return (data[tab]||[]).filter(i => i.wait && !i.done).length; }
 function subFrac(item){
   if(!item.subs.length) return null;
   return item.subs.filter(s => s.done).length + '/' + item.subs.length;
 }
 
 /* ---------- a single list row ---------- */
+function toggleWait(item){
+  item.wait = !item.wait;
+  if(item.wait) item.done = false;   // waiting and done are exclusive
+  save(); render();
+  if(navigator.vibrate) navigator.vibrate(12);
+}
+
+/* attach a long-press (and right-click on desktop) that toggles waiting */
+function attachLongPress(el, item){
+  let timer = null, moved = false, fired = false;
+  const START = 460;
+
+  const begin = () => {
+    moved = false; fired = false;
+    clearTimeout(timer);
+    timer = setTimeout(() => { if(!moved){ fired = true; toggleWait(item); } }, START);
+  };
+  const cancel = () => { clearTimeout(timer); };
+
+  el.addEventListener('touchstart', begin, {passive:true});
+  el.addEventListener('touchmove', () => { moved = true; cancel(); }, {passive:true});
+  el.addEventListener('touchend', cancel);
+  el.addEventListener('touchcancel', cancel);
+
+  el.addEventListener('mousedown', e => { if(e.button === 0) begin(); });
+  el.addEventListener('mousemove', () => { moved = true; });
+  el.addEventListener('mouseup', cancel);
+  el.addEventListener('mouseleave', cancel);
+
+  /* right-click is the desktop equivalent */
+  el.addEventListener('contextmenu', e => { e.preventDefault(); toggleWait(item); });
+
+  /* swallow the click that follows a long-press so it doesn't open detail */
+  el.addEventListener('click', e => {
+    if(fired){ e.stopPropagation(); e.preventDefault(); fired = false; }
+  }, true);
+}
+
 function itemRow(tab, item){
   const row = document.createElement('div');
-  row.className = 'item' + (item.done ? ' done' : '');
+  row.className = 'item' + (item.done ? ' done' : '') + (item.wait && !item.done ? ' waiting' : '');
 
   const box = document.createElement('button');
   box.className = 'box';
   box.setAttribute('aria-label', item.done ? 'Mark not done' : 'Mark done');
-  box.onclick = e => { e.stopPropagation(); item.done = !item.done; save(); render(); };
+  box.onclick = e => {
+    e.stopPropagation();
+    item.done = !item.done;
+    if(item.done) item.wait = false;
+    save(); render();
+  };
 
   const body = document.createElement('div');
   body.className = 'body';
   body.onclick = () => openDetail(tab, item);
+  attachLongPress(body, item);
 
   const txt = document.createElement('div');
   txt.className = 'txt';
   txt.textContent = item.t;
   body.appendChild(txt);
 
-  /* marker: notes present and/or sub-item progress */
+  /* markers: waiting, notes, sub-item progress */
   const frac = subFrac(item);
-  if(item.notes.trim() || frac){
+  const showWait = item.wait && !item.done;
+  if(showWait || item.notes.trim() || frac){
     const meta = document.createElement('div');
     meta.className = 'meta';
+    if(showWait){
+      const w = document.createElement('span');
+      w.className = 'wtag';
+      w.textContent = 'waiting';
+      meta.appendChild(w);
+    }
     if(item.notes.trim()){
       const dot = document.createElement('span');
       dot.className = 'dot';
@@ -697,15 +870,32 @@ function sweepBtn(tab){
 function listInto(host, tab){
   const items = data[tab];
   if(!items.length){ host.appendChild(emptyBlock(tab)); return; }
-  [...items]
-    .sort((a,b) => (a.done === b.done) ? 0 : (a.done ? 1 : -1))
-    .forEach(item => host.appendChild(itemRow(tab, item)));
+  /* tier 0 = active, 1 = waiting, 2 = done */
+  const tier = i => i.done ? 2 : (i.wait ? 1 : 0);
+  const sorted = [...items].sort((a,b) => tier(a) - tier(b));
+
+  let lastTier = null;
+  sorted.forEach(item => {
+    const t = tier(item);
+    if(t === 1 && lastTier === 0) host.appendChild(tierRule('Waiting on someone else'));
+    lastTier = t;
+    host.appendChild(itemRow(tab, item));
+  });
   if(items.some(i => i.done)) host.appendChild(sweepBtn(tab));
 }
+
+/* a faint labelled divider introducing the waiting group */
+function tierRule(label){
+  const d = document.createElement('div');
+  d.className = 'tierrule';
+  d.innerHTML = '<span>' + label + '</span>';
+  return d;
+}
+
 function addTo(tab, value){
   const v = value.trim();
   if(!v) return false;
-  data[tab].unshift({t: v, done: false, notes: '', subs: []});
+  data[tab].unshift({t: v, done: false, wait: false, notes: '', subs: []});
   save();
   return true;
 }
@@ -737,6 +927,7 @@ function renderWide(){
   stage.innerHTML = '';
   const board = document.createElement('div');
   board.className = 'board';
+  board.style.setProperty('--cols', Math.max(1, TABS.length));
   TABS.forEach(tab => {
     const col = document.createElement('div');
     col.className = 'col';
@@ -887,9 +1078,19 @@ function renderDetail(){
   addRow.append(plus, sinp);
   dbody.appendChild(addRow);
 
-  /* delete whole item */
+  /* item tools */
   const tools = document.createElement('div');
   tools.className = 'dtools';
+
+  const waitBtn = document.createElement('button');
+  waitBtn.textContent = item.wait ? 'Stop waiting — make active' : 'Mark as waiting on someone else';
+  waitBtn.onclick = () => {
+    item.wait = !item.wait;
+    if(item.wait) item.done = false;
+    save(); renderDetail(); render();
+  };
+  tools.appendChild(waitBtn);
+
   const del = document.createElement('button');
   del.textContent = 'Delete this item';
   del.onclick = () => {
@@ -954,14 +1155,14 @@ async function ghFetch(path, opts){
   });
 }
 
-/* parse a gist file body into {rev, lists}, tolerating the old flat format */
+/* parse a gist file body into {rev, lists, order}, tolerating older formats */
 function parseCloud(text){
   const raw = JSON.parse(text);
   if(raw && raw.__ledger && raw.lists){
-    return { rev: raw.rev || null, lists: raw.lists };
+    return { rev: raw.rev || null, lists: raw.lists, order: raw.order || null };
   }
   // legacy: the file was just the tabs object
-  return { rev: null, lists: raw };
+  return { rev: null, lists: raw, order: null };
 }
 
 /* read just the current cloud rev without disturbing local data.
@@ -980,12 +1181,11 @@ async function syncPull(){
   if(!SYNC.on) return false;
   SYNC.busy = true; setStatus('busy', 'Pulling…');
   try{
-    const { rev, lists } = await fetchCloud();
-    if(lists){
-      const next = {};
-      TABS.forEach(t => next[t] = Array.isArray(lists[t]) ? lists[t].map(normalize) : []);
-      data = next;
+    const { rev, lists, order } = await fetchCloud();
+    if(lists && Object.keys(lists).length){
+      adoptLists(lists, order);
       localStorage.setItem(KEY, JSON.stringify(data));
+      localStorage.setItem(TABKEY, JSON.stringify(TABS));
       if(openItem){ openItem = null; closeDetail(); }
       render();
     }
@@ -1015,7 +1215,7 @@ async function syncPush(force){
       }
     }
     const rev = newRev();
-    const payload = { __ledger: 1, rev, lists: data };
+    const payload = { __ledger: 1, rev, order: TABS, lists: data };
     const body = { files: { [SYNC.fileName]: { content: JSON.stringify(payload, null, 2) } } };
     const res = await ghFetch('/gists/' + SYNC.gist, { method:'PATCH', body: JSON.stringify(body) });
     if(!res.ok) throw new Error('HTTP ' + res.status);
@@ -1073,10 +1273,138 @@ function openSyncSheet(){
 }
 function closeSyncSheet(){ syncSheet.classList.remove('up'); }
 
+/* ---------- manage lists ---------- */
+const tabSheet  = document.getElementById('tabSheet');
+const tabListEl = document.getElementById('tabList');
+const tabMsgEl  = document.getElementById('tabMsg');
+const newTabIn  = document.getElementById('newTabIn');
+
+function tabMsg(text, kind){
+  tabMsgEl.className = 'syncmsg' + (kind ? ' ' + kind : '');
+  tabMsgEl.textContent = text || '';
+}
+
+function renderTabManager(){
+  tabListEl.innerHTML = '';
+  TABS.forEach((name, i) => {
+    const row = document.createElement('div');
+    row.className = 'tabrow';
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = name;
+    inp.setAttribute('aria-label', 'List name');
+    inp.addEventListener('change', () => renameTab(i, inp.value));
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
+
+    const cnt = document.createElement('span');
+    cnt.className = 'cnt';
+    const n = data[name] ? data[name].length : 0;
+    cnt.textContent = n === 1 ? '1 item' : n + ' items';
+
+    const up = document.createElement('button');
+    up.className = 'tabbtn'; up.textContent = '\u2191';
+    up.setAttribute('aria-label','Move up');
+    up.disabled = (i === 0);
+    up.onclick = () => moveTab(i, -1);
+
+    const dn = document.createElement('button');
+    dn.className = 'tabbtn'; dn.textContent = '\u2193';
+    dn.setAttribute('aria-label','Move down');
+    dn.disabled = (i === TABS.length - 1);
+    dn.onclick = () => moveTab(i, 1);
+
+    const rm = document.createElement('button');
+    rm.className = 'tabbtn rm'; rm.textContent = '\u00d7';
+    rm.setAttribute('aria-label','Remove list');
+    rm.disabled = (TABS.length <= 1);
+    rm.onclick = () => removeTab(i);
+
+    row.append(inp, cnt, up, dn, rm);
+    tabListEl.appendChild(row);
+  });
+}
+
+function renameTab(i, raw){
+  const next = (raw || '').trim();
+  const prev = TABS[i];
+  if(!next){ tabMsg('A list needs a name.', 'err'); renderTabManager(); return; }
+  if(next === prev){ tabMsg(''); return; }
+  if(TABS.some((t, j) => j !== i && t.toLowerCase() === next.toLowerCase())){
+    tabMsg('There is already a list with that name.', 'err');
+    renderTabManager(); return;
+  }
+  /* carry the items across to the new key, preserving order of tabs */
+  const items = data[prev] || [];
+  delete data[prev];
+  data[next] = items;
+  TABS[i] = next;
+  if(active === prev) active = next;
+  if(openTab === prev) openTab = next;
+  save(); renderTabManager(); render();
+  tabMsg('Renamed. Items kept.', 'ok');
+}
+
+function moveTab(i, dir){
+  const j = i + dir;
+  if(j < 0 || j >= TABS.length) return;
+  const tmp = TABS[i]; TABS[i] = TABS[j]; TABS[j] = tmp;
+  save(); renderTabManager(); render();
+  tabMsg('');
+}
+
+function removeTab(i){
+  const name = TABS[i];
+  const n = (data[name] || []).length;
+  if(TABS.length <= 1){ tabMsg('You need at least one list.', 'err'); return; }
+  const msg = n
+    ? 'Delete "' + name + '" and its ' + n + (n === 1 ? ' item?' : ' items?') +
+      '\n\nThis cannot be undone. Save a backup first if you are unsure.'
+    : 'Delete the empty list "' + name + '"?';
+  if(!confirm(msg)) return;
+  TABS.splice(i, 1);
+  delete data[name];
+  if(active === name) active = TABS[0];
+  if(openTab === name){ openTab = null; openItem = null; closeDetail(); }
+  save(); renderTabManager(); render();
+  tabMsg('Removed "' + name + '".', 'ok');
+}
+
+function addTab(raw){
+  const name = (raw || '').trim();
+  if(!name){ return false; }
+  if(TABS.some(t => t.toLowerCase() === name.toLowerCase())){
+    tabMsg('There is already a list with that name.', 'err');
+    return false;
+  }
+  TABS.push(name);
+  if(!Array.isArray(data[name])) data[name] = [];
+  save(); renderTabManager(); render();
+  tabMsg('Added "' + name + '".', 'ok');
+  return true;
+}
+
+function openTabSheet(){
+  tabMsg('');
+  renderTabManager();
+  newTabIn.value = '';
+  tabSheet.classList.add('up'); scrim.classList.add('up');
+}
+function closeTabSheet(){ tabSheet.classList.remove('up'); }
+
+newTabIn.addEventListener('keydown', e => {
+  if(e.key === 'Enter'){
+    e.preventDefault();
+    if(addTab(newTabIn.value)) newTabIn.value = '';
+  }
+});
+document.getElementById('manageTabs').onclick = openTabSheet;
+document.getElementById('tabBack').onclick = closeTabSheet;
+
 document.getElementById('menu').onclick = openSheet;
-scrim.onclick = () => { closeSheet(); closeSyncSheet(); if(openItem) closeDetail(); };
+scrim.onclick = () => { closeSheet(); closeSyncSheet(); closeTabSheet(); if(openItem) closeDetail(); };
 document.addEventListener('keydown', e => {
-  if(e.key === 'Escape'){ closeSheet(); closeSyncSheet(); if(openItem) closeDetail(); }
+  if(e.key === 'Escape'){ closeSheet(); closeSyncSheet(); closeTabSheet(); if(openItem) closeDetail(); }
 });
 
 /* sync buttons */
@@ -1141,7 +1469,8 @@ document.getElementById('syncForget').onclick = () => {
 };
 
 document.getElementById('exp').onclick = () => {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const payload = { __ledger: 1, order: TABS, lists: data };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const d = new Date();
@@ -1159,10 +1488,13 @@ file.onchange = () => {
   const r = new FileReader();
   r.onload = () => {
     try{
-      const raw = JSON.parse(r.result);
-      const next = {};
-      TABS.forEach(t => next[t] = Array.isArray(raw[t]) ? raw[t].map(normalize) : []);
-      data = next; save(); render(); closeSheet();
+      const parsed = JSON.parse(r.result);
+      /* accept both the new {order, lists} wrapper and the older flat file */
+      const lists = (parsed && parsed.__ledger && parsed.lists) ? parsed.lists : parsed;
+      const order = (parsed && parsed.order) ? parsed.order : null;
+      if(!lists || typeof lists !== 'object') throw new Error('shape');
+      if(!adoptLists(lists, order)) throw new Error('empty');
+      save(); render(); closeSheet();
     }catch(e){
       stamp.textContent = "That file isn't a Ledger backup";
     }
