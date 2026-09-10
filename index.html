@@ -30,8 +30,6 @@
   --rule:rgba(187,163,125,0.28);
   --hair:rgba(231,233,237,0.07);
 
-  --acc:#BBA37D;
-
   --col:34rem;
   --gut:1.4rem;
 }
@@ -113,7 +111,7 @@ nav .wrap::-webkit-scrollbar{display:none}
 }
 .tab::after{
   content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;
-  background:var(--acc);transform:scaleX(0);transform-origin:left;
+  background:var(--gold);transform:scaleX(0);transform-origin:left;
   transition:transform .4s cubic-bezier(.2,.7,.2,1);
 }
 .tab.on{color:var(--ink)}
@@ -124,23 +122,11 @@ nav .wrap::-webkit-scrollbar{display:none}
   font-size:0.56rem;color:var(--dim);margin-left:0.5em;
   letter-spacing:0.1em;font-variant-numeric:tabular-nums;
 }
-.tab.on .n{color:var(--acc)}
+.tab.on .n{color:var(--gold)}
 .tab .w{
   font-size:0.5rem;color:var(--dim);margin-left:0.35em;
   letter-spacing:0.1em;font-variant-numeric:tabular-nums;opacity:0.75;
 }
-/* trailing chip that adds a panel without opening the menu */
-.tabadd{
-  background:none;border:1px solid var(--hair);border-radius:50%;
-  color:var(--dim);cursor:pointer;flex-shrink:0;
-  width:19px;height:19px;margin-left:0.2rem;
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Jost',sans-serif;font-weight:300;font-size:0.8rem;line-height:1;
-  padding-bottom:2px;
-  transition:color .3s ease,border-color .3s ease;
-}
-.tabadd:hover,.tabadd:active{color:var(--gold);border-color:var(--rule)}
-
 /* ---------- list ---------- */
 main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:9rem}
 main > .wrap{padding-left:0;padding-right:0}
@@ -358,7 +344,6 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   display:flex;align-items:center;gap:0.7rem;
   padding:0.75rem 0;border-top:1px solid var(--hair);
 }
-.tabrow.pal{border-top:none;padding-top:0;padding-bottom:0.85rem}
 .tablist .tabrow:last-child{border-bottom:1px solid var(--hair)}
 .tabrow input{
   flex:1;min-width:0;background:none;border:none;outline:none;
@@ -372,23 +357,6 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   font-size:0.58rem;letter-spacing:0.14em;color:var(--dim);
   font-variant-numeric:tabular-nums;white-space:nowrap;
 }
-.swatch{
-  width:13px;height:13px;border-radius:50%;flex-shrink:0;
-  border:none;cursor:pointer;background:var(--acc);
-  opacity:0.9;transition:transform .2s ease,opacity .2s ease;
-}
-.swatch:hover{transform:scale(1.18);opacity:1}
-.palette{
-  display:flex;gap:0.65rem;align-items:center;
-  padding-left:0.1rem;
-}
-.palette button{
-  width:15px;height:15px;border-radius:50%;cursor:pointer;
-  border:1px solid transparent;background:currentColor;
-  transition:transform .2s ease;
-}
-.palette button:hover{transform:scale(1.15)}
-.palette button.on{box-shadow:0 0 0 1px var(--bg),0 0 0 2px currentColor}
 .tabbtn{
   background:none;border:none;color:var(--dim);cursor:pointer;
   padding:0.25rem 0.3rem;font-size:0.95rem;line-height:1;
@@ -451,7 +419,6 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   text-transform:uppercase;color:var(--dim);
   display:flex;align-items:center;gap:0.5rem;
 }
-.dtabname .pdot{width:5px;height:5px;border-radius:50%;background:var(--acc)}
 
 .dbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:2.5rem}
 
@@ -606,7 +573,6 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   text-transform:uppercase;letter-spacing:0.22em;
   font-size:0.55rem;color:var(--dim);
 }
-.pgroup .pdot{width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0}
 .pgroup::after{content:'';flex:1;height:1px;background:var(--hair)}
 
 .prow{
@@ -619,7 +585,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   font-size:0.55rem;text-transform:uppercase;letter-spacing:0.2em;
   color:var(--dim);margin-bottom:0.45rem;
 }
-.ptop .ppanel{color:var(--acc);opacity:0.85}
+.ptop .ppanel{color:var(--gold);opacity:0.85}
 .ptop .page{
   margin-left:auto;font-variant-numeric:tabular-nums;
   letter-spacing:0.14em;color:var(--muted);
@@ -665,7 +631,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   main > .wrap{display:flex;flex-direction:column}
   .board{
     display:grid;
-    grid-template-columns:repeat(var(--cols,4),minmax(0,1fr)) 62px;
+    grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));
     align-items:stretch;border-top:1px solid var(--hair);
     flex:1;min-height:0;
   }
@@ -676,12 +642,8 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   .col:last-child{border-right:none}
   .col .items{overflow-y:auto}
   .colhead{
-    display:flex;align-items:center;gap:0.6rem;
+    display:flex;align-items:baseline;gap:0.6rem;
     padding:1.5rem 1.5rem 1rem;border-bottom:1px solid var(--hair);
-  }
-  .colhead .pdot{
-    width:5px;height:5px;border-radius:50%;background:var(--acc);
-    flex-shrink:0;
   }
   .colhead h3{
     font-family:'Jost',sans-serif;font-weight:300;
@@ -689,7 +651,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
     font-size:0.66rem;color:var(--ink);
   }
   .colhead .n{
-    font-size:0.55rem;color:var(--acc);
+    font-size:0.55rem;color:var(--gold);
     letter-spacing:0.1em;font-variant-numeric:tabular-nums;
   }
   .colmenu{
@@ -699,18 +661,6 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   }
   .col:hover .colmenu{opacity:1}
   .colmenu:hover{color:var(--gold)}
-  .coladd{
-    display:flex;flex-direction:row;align-items:flex-start;justify-content:center;
-    padding-top:1.3rem;border-right:none;
-  }
-  .coladd button{
-    background:none;border:1px dashed var(--hair);color:var(--dim);
-    border-radius:50%;width:30px;height:30px;cursor:pointer;
-    font-family:'Jost',sans-serif;font-weight:300;font-size:1rem;line-height:1;
-    display:flex;align-items:center;justify-content:center;padding-bottom:2px;
-    transition:color .3s ease,border-color .3s ease;
-  }
-  .coladd button:hover{color:var(--gold);border-color:var(--rule)}
   .col .items{flex:1}
   .col .item{padding:0.85rem 1.5rem;gap:0.85rem}
   .col .txt{font-size:0.88rem}
@@ -864,13 +814,9 @@ const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 /* storage keys — ledger.v1 is permanent and is never renamed */
 const KEY     = 'ledger.v1';
 const TABKEY  = KEY + '.tabs';
-const PANKEY  = KEY + '.panels';
 const UIKEY   = KEY + '.ui';
 
 const WIDE = window.matchMedia('(min-width:1000px)');
-
-/* panel accents — muted, all at home in the dark palette */
-const ACCENTS = ['#BBA37D','#8FA189','#7D91AC','#B4897E','#9A87A8','#8C8C88'];
 
 /* an item counts as stale once nothing has happened for this long */
 const STALE_DAYS = 10;
@@ -881,7 +827,6 @@ let loadClean = true;
 let storageFailed = false;
 
 let TABS   = loadTabs();
-let PANELS = loadPanels();      /* {panelName: {accent:int}} */
 let UI     = loadUI();          /* {waitOpen:{panel:bool}, pipeSort:'age'|'panel'} */
 let data   = load();
 reconcileTabs();
@@ -905,14 +850,6 @@ function loadTabs(){
     if(Array.isArray(saved) && saved.length) return saved.filter(t => typeof t === 'string' && t.trim());
   }catch(e){}
   return DEFAULT_TABS.slice();
-}
-
-function loadPanels(){
-  try{
-    const saved = JSON.parse(localStorage.getItem(PANKEY) || 'null');
-    if(saved && typeof saved === 'object' && !Array.isArray(saved)) return saved;
-  }catch(e){}
-  return {};
 }
 
 function loadUI(){
@@ -957,23 +894,12 @@ function keepRescueCopy(txt){
   }catch(e){}
 }
 
-/* Any panel that has data but isn't in the list gets appended, any listed
-   panel without data gets an empty list, and every panel gets an accent. */
+/* Any panel that has data but isn't in the list gets appended, and any listed
+   panel without data gets an empty list. Guarantees they stay in step. */
 function reconcileTabs(){
   Object.keys(data).forEach(t => { if(!TABS.includes(t)) TABS.push(t); });
   TABS.forEach(t => { if(!Array.isArray(data[t])) data[t] = []; });
   if(!TABS.length){ TABS = DEFAULT_TABS.slice(); TABS.forEach(t => data[t] = data[t] || []); }
-  TABS.forEach((t, i) => {
-    const cur = PANELS[t];
-    const acc = cur && Number.isInteger(cur.accent) ? cur.accent : (i % ACCENTS.length);
-    PANELS[t] = Object.assign({}, cur, { accent: ((acc % ACCENTS.length) + ACCENTS.length) % ACCENTS.length });
-  });
-  Object.keys(PANELS).forEach(t => { if(!TABS.includes(t)) delete PANELS[t]; });
-}
-
-function accentOf(tab){
-  const p = PANELS[tab];
-  return ACCENTS[(p && Number.isInteger(p.accent)) ? p.accent : 0] || ACCENTS[0];
 }
 
 /* Bring an item up to the current shape. Unknown fields are carried through
@@ -1010,7 +936,6 @@ function put(k, v){
 function save(){
   const okItems = put(KEY, JSON.stringify(data));
   put(TABKEY, JSON.stringify(TABS));
-  put(PANKEY, JSON.stringify(PANELS));
   put(UIKEY, JSON.stringify(UI));
   put(KEY + '.tab', active);
   if(storageFailed !== !okItems){ storageFailed = !okItems; renderAlerts(); }
@@ -1038,7 +963,7 @@ const pipebody = document.getElementById('pipebody');
 /* Adopt an incoming set of panels (from cloud or a backup file) without
    dropping any panel it contains. Order follows the incoming order, with
    any extra local panels appended. */
-function adoptLists(lists, order, panels){
+function adoptLists(lists, order){
   const next = {};
   const incoming = Object.keys(lists).filter(k => Array.isArray(lists[k]));
   incoming.forEach(k => next[k] = lists[k].map(normalize));
@@ -1050,13 +975,6 @@ function adoptLists(lists, order, panels){
   if(!newTabs.length) return false;
   data = next;
   TABS = newTabs;
-  if(panels && typeof panels === 'object' && !Array.isArray(panels)){
-    const merged = {};
-    Object.keys(panels).forEach(k => {
-      if(panels[k] && Number.isInteger(panels[k].accent)) merged[k] = {accent: panels[k].accent};
-    });
-    PANELS = merged;
-  }
   reconcileTabs();
   if(!TABS.includes(active)) active = TABS[0];
   return true;
@@ -1118,37 +1036,6 @@ function toggleWait(item){
   if(navigator.vibrate) navigator.vibrate(12);
 }
 
-/* attach a long-press (and right-click on desktop) that toggles waiting */
-function attachLongPress(el, item){
-  let timer = null, moved = false, fired = false;
-  const START = 460;
-
-  const begin = () => {
-    moved = false; fired = false;
-    clearTimeout(timer);
-    timer = setTimeout(() => { if(!moved){ fired = true; toggleWait(item); } }, START);
-  };
-  const cancel = () => { clearTimeout(timer); };
-
-  el.addEventListener('touchstart', begin, {passive:true});
-  el.addEventListener('touchmove', () => { moved = true; cancel(); }, {passive:true});
-  el.addEventListener('touchend', cancel);
-  el.addEventListener('touchcancel', cancel);
-
-  el.addEventListener('mousedown', e => { if(e.button === 0) begin(); });
-  el.addEventListener('mousemove', () => { moved = true; });
-  el.addEventListener('mouseup', cancel);
-  el.addEventListener('mouseleave', cancel);
-
-  /* right-click is the desktop equivalent */
-  el.addEventListener('contextmenu', e => { e.preventDefault(); toggleWait(item); });
-
-  /* swallow the click that follows a long-press so it doesn't open detail */
-  el.addEventListener('click', e => {
-    if(fired){ e.stopPropagation(); e.preventDefault(); fired = false; }
-  }, true);
-}
-
 function itemRow(tab, item){
   const row = document.createElement('div');
   row.className = 'item' + (item.done ? ' done' : '') + (item.wait && !item.done ? ' waiting' : '');
@@ -1166,7 +1053,6 @@ function itemRow(tab, item){
   const body = document.createElement('div');
   body.className = 'body';
   body.onclick = () => openDetail(tab, item);
-  attachLongPress(body, item);
 
   const txt = document.createElement('div');
   txt.className = 'txt';
@@ -1297,19 +1183,12 @@ function renderTabs(){
     const wait = waitCount(t);
     const b = document.createElement('button');
     b.className = 'tab' + (t === active ? ' on' : '');
-    b.style.setProperty('--acc', accentOf(t));
     b.innerHTML = escapeHtml(t)
       + (open ? ' <span class="n">' + open + '</span>' : '')
       + (wait ? ' <span class="w">+' + wait + '</span>' : '');
     b.onclick = () => { active = t; save(); render(); };
     navwrap.appendChild(b);
   });
-  const plus = document.createElement('button');
-  plus.className = 'tabadd';
-  plus.setAttribute('aria-label','Add a panel');
-  plus.textContent = '+';
-  plus.onclick = () => openTabSheet(true);
-  navwrap.appendChild(plus);
 }
 function renderNarrow(){
   renderTabs();
@@ -1363,20 +1242,18 @@ function renderWide(){
   TABS.forEach(tab => {
     const col = document.createElement('div');
     col.className = 'col';
-    col.style.setProperty('--acc', accentOf(tab));
 
     const head = document.createElement('div');
     head.className = 'colhead';
-    const dot = document.createElement('span'); dot.className = 'pdot';
     const h = document.createElement('h3'); h.textContent = tab;
-    head.append(dot, h);
+    head.appendChild(h);
     const open = openCount(tab);
     if(open){ const n = document.createElement('span'); n.className='n'; n.textContent=open; head.appendChild(n); }
     const cm = document.createElement('button');
     cm.className = 'colmenu';
     cm.innerHTML = '&#8943;';
     cm.setAttribute('aria-label','Panel settings');
-    cm.onclick = () => openTabSheet(false, tab);
+    cm.onclick = () => openTabSheet(false);
     head.appendChild(cm);
 
     const items = document.createElement('div');
@@ -1397,16 +1274,6 @@ function renderWide(){
     col.append(head, items, foot);
     board.appendChild(col);
   });
-
-  /* a permanently available slot for a new panel */
-  const addCol = document.createElement('div');
-  addCol.className = 'col coladd';
-  const addB = document.createElement('button');
-  addB.textContent = '+';
-  addB.setAttribute('aria-label','Add a panel');
-  addB.onclick = () => openTabSheet(true);
-  addCol.appendChild(addB);
-  board.appendChild(addCol);
 
   stage.appendChild(board);
 }
@@ -1468,11 +1335,7 @@ function closeDetail(){
 function renderDetail(){
   if(!openItem) return;
   const item = openItem;
-  dtabname.innerHTML = '';
-  const pd = document.createElement('span'); pd.className = 'pdot';
-  dtabname.style.setProperty('--acc', accentOf(openTab));
-  const pn = document.createElement('span'); pn.textContent = openTab;
-  dtabname.append(pd, pn);
+  dtabname.textContent = openTab;
   detail.classList.toggle('done-item', item.done);
   dbody.innerHTML = '';
 
@@ -1680,7 +1543,7 @@ function renderPipe(){
     const d = document.createElement('div');
     d.className = 'empty';
     d.innerHTML = '<div class="line"></div><p>Nothing is sitting with anyone else.</p>' +
-                  '<span>Hold an item to park it here</span>';
+                  '<span>Open an item to mark it waiting</span>';
     pipebody.appendChild(d);
     return;
   }
@@ -1692,10 +1555,8 @@ function renderPipe(){
       if(!inTab.length) return;
       const g = document.createElement('div');
       g.className = 'pgroup';
-      g.style.setProperty('--acc', accentOf(tab));
-      const dot = document.createElement('span'); dot.className = 'pdot';
       const nm = document.createElement('span'); nm.textContent = tab;
-      g.append(dot, nm);
+      g.appendChild(nm);
       pipebody.appendChild(g);
       inTab.forEach(r => pipebody.appendChild(pipeRow(r.tab, r.item, false)));
     });
@@ -1708,7 +1569,6 @@ function renderPipe(){
 function pipeRow(tab, item, showPanel){
   const row = document.createElement('div');
   row.className = 'prow';
-  row.style.setProperty('--acc', accentOf(tab));
 
   const top = document.createElement('div');
   top.className = 'ptop';
@@ -1839,15 +1699,15 @@ function fingerprint(s){
   return 'h' + h.toString(36) + '-' + s.length.toString(36);
 }
 
-/* parse a gist file body into {rev, lists, order, panels}, tolerating older
+/* parse a gist file body into {rev, lists, order}, tolerating older
    formats: the {__ledger, lists} wrapper, and the original bare panels object */
 function parseCloud(text){
   const raw = JSON.parse(text);
   if(raw && raw.__ledger && raw.lists){
-    return { rev: raw.rev || fingerprint(text), lists: raw.lists, order: raw.order || null, panels: raw.panels || null };
+    return { rev: raw.rev || fingerprint(text), lists: raw.lists, order: raw.order || null };
   }
   // legacy: the file was just the panels object
-  return { rev: fingerprint(text), lists: raw, order: null, panels: null };
+  return { rev: fingerprint(text), lists: raw, order: null };
 }
 
 /* read just the current cloud rev without disturbing local data.
@@ -1866,12 +1726,11 @@ async function syncPull(){
   if(!SYNC.on) return false;
   SYNC.busy = true; setStatus('busy', 'Pulling…');
   try{
-    const { rev, lists, order, panels } = await fetchCloud();
+    const { rev, lists, order } = await fetchCloud();
     if(lists && Object.keys(lists).length){
-      adoptLists(lists, order, panels);
+      adoptLists(lists, order);
       localStorage.setItem(KEY, JSON.stringify(data));
       localStorage.setItem(TABKEY, JSON.stringify(TABS));
-      localStorage.setItem(PANKEY, JSON.stringify(PANELS));
       if(openItem){ openItem = null; closeDetail(); }
       render();
       if(pipe.classList.contains('up')) renderPipe();
@@ -1905,7 +1764,7 @@ async function syncPush(force){
       }
     }
     const rev = newRev();
-    const payload = { __ledger: 1, v: 5, rev, order: TABS, panels: PANELS, lists: data };
+    const payload = { __ledger: 1, v: 6, rev, order: TABS, lists: data };
     const body = { files: { [SYNC.fileName]: { content: JSON.stringify(payload, null, 2) } } };
     const res = await ghFetch('/gists/' + SYNC.gist, { method:'PATCH', body: JSON.stringify(body) });
     if(!res.ok) throw new Error('HTTP ' + res.status);
@@ -1978,8 +1837,6 @@ const tabListEl = document.getElementById('tabList');
 const tabMsgEl  = document.getElementById('tabMsg');
 const newTabIn  = document.getElementById('newTabIn');
 
-let paletteOpenFor = null;   /* panel name whose colour row is expanded */
-
 function tabMsg(text, kind){
   tabMsgEl.className = 'syncmsg' + (kind ? ' ' + kind : '');
   tabMsgEl.textContent = text || '';
@@ -1990,15 +1847,6 @@ function renderTabManager(){
   TABS.forEach((name, i) => {
     const row = document.createElement('div');
     row.className = 'tabrow';
-
-    const sw = document.createElement('button');
-    sw.className = 'swatch';
-    sw.style.setProperty('--acc', accentOf(name));
-    sw.setAttribute('aria-label','Panel colour');
-    sw.onclick = () => {
-      paletteOpenFor = (paletteOpenFor === name) ? null : name;
-      renderTabManager();
-    };
 
     const inp = document.createElement('input');
     inp.type = 'text';
@@ -2031,28 +1879,8 @@ function renderTabManager(){
     rm.disabled = (TABS.length <= 1);
     rm.onclick = () => removeTab(i);
 
-    row.append(sw, inp, cnt, up, dn, rm);
+    row.append(inp, cnt, up, dn, rm);
     tabListEl.appendChild(row);
-
-    if(paletteOpenFor === name){
-      const prow = document.createElement('div');
-      prow.className = 'tabrow pal';
-      const pal = document.createElement('div');
-      pal.className = 'palette';
-      ACCENTS.forEach((hex, idx) => {
-        const b = document.createElement('button');
-        b.style.color = hex;
-        b.className = (PANELS[name] && PANELS[name].accent === idx) ? 'on' : '';
-        b.setAttribute('aria-label','Set colour ' + (idx + 1));
-        b.onclick = () => {
-          PANELS[name] = Object.assign({}, PANELS[name], {accent: idx});
-          save(); renderTabManager(); render();
-        };
-        pal.appendChild(b);
-      });
-      prow.appendChild(pal);
-      tabListEl.appendChild(prow);
-    }
   });
 }
 
@@ -2065,18 +1893,14 @@ function renameTab(i, raw){
     tabMsg('There is already a panel with that name.', 'err');
     renderTabManager(); return;
   }
-  /* carry the items and the accent across to the new key */
+  /* carry the items across to the new key, preserving the order of panels */
   const items = data[prev] || [];
-  const meta  = PANELS[prev];
   delete data[prev];
-  delete PANELS[prev];
   data[next] = items;
-  if(meta) PANELS[next] = meta;
   TABS[i] = next;
   if(active === prev) active = next;
   if(openTab === prev) openTab = next;
   if(UI.waitOpen[prev] !== undefined){ UI.waitOpen[next] = UI.waitOpen[prev]; delete UI.waitOpen[prev]; }
-  if(paletteOpenFor === prev) paletteOpenFor = next;
   save(); renderTabManager(); render();
   tabMsg('Renamed. Items kept.', 'ok');
 }
@@ -2100,11 +1924,9 @@ function removeTab(i){
   if(!confirm(msg)) return;
   TABS.splice(i, 1);
   delete data[name];
-  delete PANELS[name];
   delete UI.waitOpen[name];
   if(active === name) active = TABS[0];
   if(openTab === name){ openTab = null; openItem = null; closeDetail(); }
-  if(paletteOpenFor === name) paletteOpenFor = null;
   save(); renderTabManager(); render();
   tabMsg('Removed "' + name + '".', 'ok');
 }
@@ -2118,22 +1940,20 @@ function addTab(raw){
   }
   TABS.push(name);
   if(!Array.isArray(data[name])) data[name] = [];
-  PANELS[name] = {accent: (TABS.length - 1) % ACCENTS.length};
   save(); renderTabManager(); render();
   tabMsg('Added "' + name + '".', 'ok');
   return true;
 }
 
-function openTabSheet(focusNew, highlight){
+function openTabSheet(focusNew){
   tabMsg('');
-  paletteOpenFor = highlight || null;
   renderTabManager();
   newTabIn.value = '';
   closeSheet();
   tabSheet.classList.add('up'); scrim.classList.add('up');
   if(focusNew) setTimeout(() => newTabIn.focus(), 340);
 }
-function closeTabSheet(){ tabSheet.classList.remove('up'); scrim.classList.remove('up'); paletteOpenFor = null; }
+function closeTabSheet(){ tabSheet.classList.remove('up'); scrim.classList.remove('up'); }
 
 newTabIn.addEventListener('keydown', e => {
   if(e.key === 'Enter'){
@@ -2219,7 +2039,7 @@ document.getElementById('syncForget').onclick = () => {
 };
 
 document.getElementById('exp').onclick = () => {
-  const payload = { __ledger: 1, v: 5, order: TABS, panels: PANELS, lists: data };
+  const payload = { __ledger: 1, v: 6, order: TABS, lists: data };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2243,10 +2063,9 @@ file.onchange = () => {
          original flat file that was just the panels object */
       const lists  = (parsed && parsed.__ledger && parsed.lists) ? parsed.lists : parsed;
       const order  = (parsed && parsed.order)  ? parsed.order  : null;
-      const panels = (parsed && parsed.panels) ? parsed.panels : null;
       if(!lists || typeof lists !== 'object') throw new Error('shape');
       if(openItem){ openItem = null; closeDetail(); }
-      if(!adoptLists(lists, order, panels)) throw new Error('empty');
+      if(!adoptLists(lists, order)) throw new Error('empty');
       save(); render(); closeSheet();
     }catch(e){
       stamp.textContent = "That file isn't a Ledger backup";
