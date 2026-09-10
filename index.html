@@ -739,6 +739,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
     <button class="act" id="manageTabs">Panels<small id="manageTabsSub">Add, rename, recolour or reorder</small></button>
     <button class="act" id="exp">Save a backup<small>Downloads every panel as a file</small></button>
     <button class="act" id="imp">Restore from backup<small>Replaces everything currently stored</small></button>
+    <button class="act" id="updBtn">Check for an update<small id="updSub"></small></button>
     <div class="stamp" id="stamp"></div>
   </div>
 </div>
@@ -809,6 +810,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
+const APP_VERSION = 'v7';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -2099,10 +2101,50 @@ if(SYNC.on){
   });
 }
 
+/* ---------- updates ---------- */
+let swReg = null;
+const updSub = document.getElementById('updSub');
+function updMsg(t){ updSub.textContent = t; }
+updMsg('Running ' + APP_VERSION);
+
+document.getElementById('updBtn').onclick = async () => {
+  updMsg('Checking\u2026');
+  let latest = null;
+  try{
+    const res = await fetch('./index.html?ts=' + Date.now(), { cache: 'no-store' });
+    if(!res.ok) throw new Error('http');
+    const txt = await res.text();
+    const m = txt.match(/const APP_VERSION = '([^']+)'/);
+    latest = m ? m[1] : null;
+  }catch(e){
+    updMsg('Could not check. No connection?');
+    return;
+  }
+  if(!latest){ updMsg('Could not read the published version.'); return; }
+  if(latest === APP_VERSION){ updMsg('Running ' + APP_VERSION + ', already the latest.'); return; }
+
+  updMsg(latest + ' is out. Updating\u2026');
+  /* the reload is scheduled first so a slow or stalled service worker can
+     never leave the update half-applied */
+  setTimeout(() => location.reload(), 1200);
+  try{
+    if(window.caches){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    if(swReg){
+      swReg.update();
+      if(swReg.waiting) swReg.waiting.postMessage('skip-waiting');
+    }
+  }catch(e){}
+};
+
 /* ---------- offline + durable storage ---------- */
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' })
+      .then(r => { swReg = r; })
+      .catch(() => {});
   });
 }
 if(navigator.storage && navigator.storage.persist){

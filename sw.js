@@ -1,4 +1,4 @@
-const CACHE = 'ledger-v6';
+const CACHE = 'ledger-v7';
 
 const ASSETS = [
   './',
@@ -25,14 +25,53 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Fetch: serve from cache, fall back to network, cache what comes back.
+self.addEventListener('message', e => {
+  if (e.data === 'skip-waiting') self.skipWaiting();
+});
+
+// The app shell is the only thing that changes between releases, so it is
+// fetched from the network first and falls back to the cache when offline.
+// Everything else stays cache-first.
+function isShell(req) {
+  if (req.mode === 'navigate') return true;
+  const u = new URL(req.url);
+  if (u.origin !== self.location.origin) return false;
+  return u.pathname.endsWith('/') || u.pathname.endsWith('/index.html') || u.pathname.endsWith('/manifest.json');
+}
+
+// The version probe must never be answered from the cache: offline it has to
+// fail so the app can say it could not check, rather than claim it is current.
+function isVersionProbe(req) {
+  const u = new URL(req.url);
+  return u.origin === self.location.origin && u.searchParams.has('ts');
+}
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+
+  if (isVersionProbe(e.request)) {
+    e.respondWith(fetch(e.request, { cache: 'no-store' }));
+    return;
+  }
+
+  if (isShell(e.request)) {
+    e.respondWith(
+      fetch(e.request, { cache: 'no-store' })
+        .then(res => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(e.request).then(hit => hit || caches.match('./index.html')))
+    );
+    return;
+  }
 
   e.respondWith(
     caches.match(e.request).then(hit => {
       if (hit) {
-        // Refresh in the background so updates land next launch.
         fetch(e.request).then(res => {
           if (res && res.status === 200) {
             caches.open(CACHE).then(c => c.put(e.request, res.clone()));
