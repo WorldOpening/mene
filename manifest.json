@@ -1,7 +1,7 @@
 {
   "name": "Ledger",
   "short_name": "Ledger",
-  "description": "Running lists across Fundamental, Lumina, BGIP and Personal.",
+  "description": "Running lists and a pipeline of everything you are waiting on.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

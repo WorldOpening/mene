@@ -26,8 +26,11 @@
   --muted:#6E757B;
   --dim:#464C53;
   --gold:#BBA37D;
+  --amber:#C9A96A;
   --rule:rgba(187,163,125,0.28);
   --hair:rgba(231,233,237,0.07);
+
+  --acc:#BBA37D;
 
   --col:34rem;
   --gut:1.4rem;
@@ -66,6 +69,27 @@ header svg.seal{width:32px;height:32px;flex-shrink:0}
   font-size:0.64rem;letter-spacing:0.22em;text-transform:uppercase;
   color:var(--dim);font-variant-numeric:tabular-nums;
   padding-right:0.8rem;
+  display:flex;align-items:center;gap:0.55rem;white-space:nowrap;
+}
+.count .sep{opacity:0.45}
+.waitlink{
+  background:none;border:none;cursor:pointer;
+  font-family:'Jost',sans-serif;font-weight:300;
+  font-size:0.64rem;letter-spacing:0.22em;text-transform:uppercase;
+  color:var(--muted);padding:0;
+  font-variant-numeric:tabular-nums;
+  border-bottom:1px solid var(--hair);
+  transition:color .3s ease,border-color .3s ease;
+}
+.waitlink:hover,.waitlink:active{color:var(--gold);border-bottom-color:var(--rule)}
+.alertdot{
+  background:none;border:none;cursor:pointer;padding:0.25rem 0.1rem;
+  display:flex;align-items:center;
+}
+.alertdot i{
+  display:block;width:6px;height:6px;border-radius:50%;
+  background:var(--amber);box-shadow:0 0 6px rgba(201,169,106,0.7);
+  animation:pulse 1.8s ease-in-out infinite;
 }
 .menu{
   background:none;border:none;color:var(--dim);cursor:pointer;
@@ -77,7 +101,7 @@ header svg.seal{width:32px;height:32px;flex-shrink:0}
 
 /* ---------- tabs ---------- */
 nav{flex-shrink:0;border-bottom:1px solid var(--hair)}
-nav .wrap{display:flex;overflow-x:auto;scrollbar-width:none}
+nav .wrap{display:flex;align-items:center;overflow-x:auto;scrollbar-width:none}
 nav .wrap::-webkit-scrollbar{display:none}
 .tab{
   background:none;border:none;
@@ -87,10 +111,9 @@ nav .wrap::-webkit-scrollbar{display:none}
   white-space:nowrap;position:relative;cursor:pointer;
   transition:color .35s ease;
 }
-.tab:last-child{margin-right:0}
 .tab::after{
   content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;
-  background:var(--gold);transform:scaleX(0);transform-origin:left;
+  background:var(--acc);transform:scaleX(0);transform-origin:left;
   transition:transform .4s cubic-bezier(.2,.7,.2,1);
 }
 .tab.on{color:var(--ink)}
@@ -101,7 +124,22 @@ nav .wrap::-webkit-scrollbar{display:none}
   font-size:0.56rem;color:var(--dim);margin-left:0.5em;
   letter-spacing:0.1em;font-variant-numeric:tabular-nums;
 }
-.tab.on .n{color:var(--gold)}
+.tab.on .n{color:var(--acc)}
+.tab .w{
+  font-size:0.5rem;color:var(--dim);margin-left:0.35em;
+  letter-spacing:0.1em;font-variant-numeric:tabular-nums;opacity:0.75;
+}
+/* trailing chip that adds a panel without opening the menu */
+.tabadd{
+  background:none;border:1px solid var(--hair);border-radius:50%;
+  color:var(--dim);cursor:pointer;flex-shrink:0;
+  width:19px;height:19px;margin-left:0.2rem;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Jost',sans-serif;font-weight:300;font-size:0.8rem;line-height:1;
+  padding-bottom:2px;
+  transition:color .3s ease,border-color .3s ease;
+}
+.tabadd:hover,.tabadd:active{color:var(--gold);border-color:var(--rule)}
 
 /* ---------- list ---------- */
 main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:9rem}
@@ -139,7 +177,7 @@ main > .wrap{padding-left:0;padding-right:0}
 .item.done .txt{  color:var(--dim);text-decoration:line-through;
   text-decoration-color:var(--rule);text-decoration-thickness:1px;
 }
-/* meta marker: notes / sub-item progress */
+/* meta marker: notes / sub-item progress / who we are waiting on */
 .meta{
   flex-shrink:0;margin-top:2px;
   display:flex;align-items:center;gap:0.5rem;
@@ -154,7 +192,9 @@ main > .wrap{padding-left:0;padding-right:0}
 .meta .wtag{
   text-transform:uppercase;letter-spacing:0.16em;
   font-size:0.52rem;color:var(--gold);opacity:0.75;
+  max-width:9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
+.meta .wtag.stale{color:var(--amber);opacity:1}
 .chev{
   flex-shrink:0;margin-top:5px;width:6px;height:10px;opacity:0.35;
   transition:opacity .3s ease;
@@ -171,19 +211,31 @@ main > .wrap{padding-left:0;padding-right:0}
 .item.waiting:hover{opacity:0.78}
 .item.waiting .chev{opacity:0.2}
 
-/* divider introducing the waiting group */
+/* collapsible divider introducing the waiting group */
 .tierrule{
   display:flex;align-items:center;gap:0.9rem;
   padding:1.5rem var(--gut) 0.55rem;
+  width:100%;background:none;border:none;cursor:pointer;
+  font-family:'Jost',sans-serif;
+  transition:color .3s ease;
 }
-.tierrule::after{
-  content:'';flex:1;height:1px;background:var(--hair);
-}
+.tierrule .tl{flex:1;height:1px;background:var(--hair)}
 .tierrule span{
-  font-family:'Jost',sans-serif;font-weight:300;
+  font-weight:300;
   text-transform:uppercase;letter-spacing:0.22em;
   font-size:0.55rem;color:var(--dim);white-space:nowrap;
+  transition:color .3s ease;
 }
+.tierrule .tn{color:var(--muted);font-variant-numeric:tabular-nums}
+.tierrule .tw{
+  width:6px;height:6px;flex-shrink:0;
+  border-right:1px solid var(--dim);border-bottom:1px solid var(--dim);
+  transform:rotate(45deg) translate(-1px,-1px);
+  transition:transform .3s ease,border-color .3s ease;
+}
+.tierrule.shut .tw{transform:rotate(-45deg) translate(-1px,1px)}
+.tierrule:hover span,.tierrule:hover .tn{color:var(--gold)}
+.tierrule:hover .tw{border-color:var(--gold)}
 
 /* ---------- empty ---------- */
 .empty{padding:4.5rem 2.6rem;text-align:center;animation:in .5s ease both}
@@ -251,6 +303,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   padding-top:1.7rem;padding-bottom:calc(1.6rem + env(safe-area-inset-bottom));
   transform:translateY(101%);
   transition:transform .42s cubic-bezier(.2,.7,.2,1);
+  max-height:92vh;overflow-y:auto;
 }
 .sheet.up{transform:translateY(0)}
 .sheet h2{
@@ -270,6 +323,10 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   display:block;color:var(--dim);font-size:0.66rem;
   letter-spacing:0.1em;margin-top:0.3rem;
 }
+.act .badge{
+  float:right;color:var(--gold);font-size:0.66rem;
+  letter-spacing:0.16em;font-variant-numeric:tabular-nums;
+}
 .stamp{
   margin-top:1.5rem;text-align:center;font-size:0.55rem;
   letter-spacing:0.22em;text-transform:uppercase;color:var(--dim);
@@ -288,22 +345,23 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 .synced.on .led{background:var(--gold);box-shadow:0 0 6px rgba(187,163,125,0.6)}
 .synced.busy .led{background:var(--gold);animation:pulse 1s ease-in-out infinite}
 .synced.err .led{background:#B4776B}
-.synced.warn .led{background:#C9A96A;box-shadow:0 0 6px rgba(201,169,106,0.7)}
+.synced.warn .led{background:var(--amber);box-shadow:0 0 6px rgba(201,169,106,0.7)}
 @keyframes pulse{0%,100%{opacity:0.3}50%{opacity:1}}
 
 /* sync setup form */
 #syncSheet{z-index:55}
 #tabSheet{z-index:56}
 
-/* manage lists */
+/* manage panels */
 .tablist{display:flex;flex-direction:column;margin-bottom:0.4rem}
 .tabrow{
-  display:flex;align-items:center;gap:0.8rem;
+  display:flex;align-items:center;gap:0.7rem;
   padding:0.75rem 0;border-top:1px solid var(--hair);
 }
-.tabrow:last-child{border-bottom:1px solid var(--hair)}
+.tabrow.pal{border-top:none;padding-top:0;padding-bottom:0.85rem}
+.tablist .tabrow:last-child{border-bottom:1px solid var(--hair)}
 .tabrow input{
-  flex:1;background:none;border:none;outline:none;
+  flex:1;min-width:0;background:none;border:none;outline:none;
   font-family:'Jost',sans-serif;font-weight:300;color:var(--ink);
   font-size:16px;letter-spacing:0.03em;padding:0.1rem 0;
   border-bottom:1px solid transparent;
@@ -314,6 +372,23 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   font-size:0.58rem;letter-spacing:0.14em;color:var(--dim);
   font-variant-numeric:tabular-nums;white-space:nowrap;
 }
+.swatch{
+  width:13px;height:13px;border-radius:50%;flex-shrink:0;
+  border:none;cursor:pointer;background:var(--acc);
+  opacity:0.9;transition:transform .2s ease,opacity .2s ease;
+}
+.swatch:hover{transform:scale(1.18);opacity:1}
+.palette{
+  display:flex;gap:0.65rem;align-items:center;
+  padding-left:0.1rem;
+}
+.palette button{
+  width:15px;height:15px;border-radius:50%;cursor:pointer;
+  border:1px solid transparent;background:currentColor;
+  transition:transform .2s ease;
+}
+.palette button:hover{transform:scale(1.15)}
+.palette button.on{box-shadow:0 0 0 1px var(--bg),0 0 0 2px currentColor}
 .tabbtn{
   background:none;border:none;color:var(--dim);cursor:pointer;
   padding:0.25rem 0.3rem;font-size:0.95rem;line-height:1;
@@ -346,7 +421,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 .syncmsg.err{color:#C08A7E}
 .syncmsg.ok{color:var(--gold)}
 
-/* ---------- detail view ---------- */
+/* ---------- detail view / pipeline (shared shell) ---------- */
 .detail{
   position:fixed;inset:0;z-index:60;
   background:var(--bg);
@@ -357,6 +432,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   visibility:hidden;
 }
 .detail.up{transform:translateX(0);visibility:visible}
+#pipe{z-index:58}
 
 .dhead{flex-shrink:0;padding-top:1.4rem;padding-bottom:1.1rem}
 .dhead .wrap{display:flex;align-items:center;gap:0.4rem}
@@ -373,7 +449,9 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 .dtabname{
   margin-left:auto;font-size:0.6rem;letter-spacing:0.22em;
   text-transform:uppercase;color:var(--dim);
+  display:flex;align-items:center;gap:0.5rem;
 }
+.dtabname .pdot{width:5px;height:5px;border-radius:50%;background:var(--acc)}
 
 .dbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:2.5rem}
 
@@ -400,7 +478,37 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   text-transform:uppercase;letter-spacing:0.24em;
   font-size:0.6rem;color:var(--dim);
   padding:1.8rem var(--gut) 0.9rem;
+  display:flex;align-items:baseline;gap:0.7rem;
 }
+.dlabel .age{
+  margin-left:auto;letter-spacing:0.14em;color:var(--muted);
+  font-variant-numeric:tabular-nums;text-transform:none;
+}
+.dlabel .age.stale{color:var(--amber)}
+
+/* waiting block inside detail */
+.waitbox{
+  padding:0 var(--gut);
+  display:flex;flex-direction:column;gap:0.9rem;
+}
+.waitbox .whoin{
+  background:none;border:none;border-bottom:1px solid var(--hair);
+  outline:none;color:var(--ink);width:100%;
+  font-family:'Jost',sans-serif;font-weight:300;font-size:16px;
+  letter-spacing:0.02em;padding:0.2rem 0 0.55rem;
+  transition:border-color .3s ease;
+}
+.waitbox .whoin:focus{border-bottom-color:var(--gold)}
+.waitbox .whoin::placeholder{color:var(--dim);font-size:0.92rem}
+.microrow{display:flex;flex-wrap:wrap;gap:1.4rem;padding-top:0.1rem}
+.micro{
+  background:none;border:none;cursor:pointer;
+  font-family:'Jost',sans-serif;font-weight:300;
+  font-size:0.58rem;text-transform:uppercase;letter-spacing:0.22em;
+  color:var(--dim);padding:0.2rem 0;
+  transition:color .3s ease;
+}
+.micro:hover,.micro:active{color:var(--gold)}
 
 /* notes */
 .notes{
@@ -471,6 +579,64 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 }
 .dtools button:active,.dtools button:hover{color:var(--gold)}
 
+/* ---------- pipeline ---------- */
+.pipetools{flex-shrink:0;padding-bottom:0.5rem}
+.pipetools .wrap{display:flex;align-items:center;gap:1.5rem}
+.chip{
+  background:none;border:none;cursor:pointer;
+  font-family:'Jost',sans-serif;font-weight:300;
+  font-size:0.58rem;text-transform:uppercase;letter-spacing:0.22em;
+  color:var(--dim);padding:0.4rem 0;position:relative;
+  transition:color .3s ease;
+}
+.chip::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:1px;
+  background:var(--gold);transform:scaleX(0);transform-origin:left;
+  transition:transform .35s cubic-bezier(.2,.7,.2,1);
+}
+.chip.on{color:var(--ink)}
+.chip.on::after{transform:scaleX(1)}
+.chip:hover{color:var(--muted)}
+.chip.on:hover{color:var(--ink)}
+
+.pgroup{
+  padding:1.6rem var(--gut) 0.6rem;
+  display:flex;align-items:center;gap:0.65rem;
+  font-family:'Jost',sans-serif;font-weight:300;
+  text-transform:uppercase;letter-spacing:0.22em;
+  font-size:0.55rem;color:var(--dim);
+}
+.pgroup .pdot{width:5px;height:5px;border-radius:50%;background:var(--acc);flex-shrink:0}
+.pgroup::after{content:'';flex:1;height:1px;background:var(--hair)}
+
+.prow{
+  padding:1rem var(--gut);
+  border-bottom:1px solid var(--hair);
+  animation:in .4s cubic-bezier(.2,.7,.2,1) both;
+}
+.ptop{
+  display:flex;align-items:baseline;gap:0.7rem;
+  font-size:0.55rem;text-transform:uppercase;letter-spacing:0.2em;
+  color:var(--dim);margin-bottom:0.45rem;
+}
+.ptop .ppanel{color:var(--acc);opacity:0.85}
+.ptop .page{
+  margin-left:auto;font-variant-numeric:tabular-nums;
+  letter-spacing:0.14em;color:var(--muted);
+}
+.ptop .page.stale{color:var(--amber)}
+.ptxt{
+  font-size:0.95rem;line-height:1.45;color:var(--ink);
+  letter-spacing:0.012em;word-break:break-word;cursor:pointer;
+}
+.ptxt:hover{color:var(--gold)}
+.pwho{
+  margin-top:0.4rem;
+  font-size:0.63rem;letter-spacing:0.06em;color:var(--muted);line-height:1.5;
+}
+.pwho em{font-style:normal;color:var(--dim)}
+.pacts{display:flex;gap:1.4rem;margin-top:0.75rem}
+
 /* ================= BREAKPOINTS ================= */
 
 @media (min-width:480px){
@@ -487,6 +653,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   .box{width:16px;height:16px}
   main{padding-bottom:10rem}
   .sheet .wrap,.detail .wrap{max-width:40rem}
+  .detail .dbody{width:100%;max-width:40rem;margin:0 auto}
   .dtitle-txt{font-size:1.7rem}
 }
 
@@ -498,7 +665,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   main > .wrap{display:flex;flex-direction:column}
   .board{
     display:grid;
-    grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));
+    grid-template-columns:repeat(var(--cols,4),minmax(0,1fr)) 62px;
     align-items:stretch;border-top:1px solid var(--hair);
     flex:1;min-height:0;
   }
@@ -509,8 +676,12 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   .col:last-child{border-right:none}
   .col .items{overflow-y:auto}
   .colhead{
-    display:flex;align-items:baseline;gap:0.6rem;
+    display:flex;align-items:center;gap:0.6rem;
     padding:1.5rem 1.5rem 1rem;border-bottom:1px solid var(--hair);
+  }
+  .colhead .pdot{
+    width:5px;height:5px;border-radius:50%;background:var(--acc);
+    flex-shrink:0;
   }
   .colhead h3{
     font-family:'Jost',sans-serif;font-weight:300;
@@ -518,12 +689,32 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
     font-size:0.66rem;color:var(--ink);
   }
   .colhead .n{
-    font-size:0.55rem;color:var(--gold);
+    font-size:0.55rem;color:var(--acc);
     letter-spacing:0.1em;font-variant-numeric:tabular-nums;
   }
+  .colmenu{
+    margin-left:auto;background:none;border:none;cursor:pointer;
+    color:var(--dim);font-size:0.9rem;line-height:0.5;letter-spacing:0.08em;
+    padding:0.2rem 0.1rem;opacity:0;transition:opacity .3s ease,color .3s ease;
+  }
+  .col:hover .colmenu{opacity:1}
+  .colmenu:hover{color:var(--gold)}
+  .coladd{
+    display:flex;flex-direction:row;align-items:flex-start;justify-content:center;
+    padding-top:1.3rem;border-right:none;
+  }
+  .coladd button{
+    background:none;border:1px dashed var(--hair);color:var(--dim);
+    border-radius:50%;width:30px;height:30px;cursor:pointer;
+    font-family:'Jost',sans-serif;font-weight:300;font-size:1rem;line-height:1;
+    display:flex;align-items:center;justify-content:center;padding-bottom:2px;
+    transition:color .3s ease,border-color .3s ease;
+  }
+  .coladd button:hover{color:var(--gold);border-color:var(--rule)}
   .col .items{flex:1}
   .col .item{padding:0.85rem 1.5rem;gap:0.85rem}
   .col .txt{font-size:0.88rem}
+  .col .tierrule{padding-left:1.5rem;padding-right:1.5rem}
   .col .empty{padding:2.6rem 1.5rem}
   .col .empty p{font-size:0.98rem}
   .col .empty .line{margin-bottom:1.2rem}
@@ -533,6 +724,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   .colfoot input[type=text]{font-size:0.88rem}
   .colfoot input[type=text]::placeholder{font-size:0.84rem}
   .detail .wrap{max-width:46rem}
+  .detail .dbody{max-width:46rem}
 }
 
 @media (min-width:1500px){
@@ -543,7 +735,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   *{animation:none!important;transition:none!important}
 }
 </style>
-</head>
+
 <body>
 
 <header>
@@ -585,29 +777,31 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
     <h2>Ledger</h2>
 
     <div class="synced" id="syncStatus"></div>
+    <div class="syncmsg" id="storeMsg" style="margin-top:0"></div>
+
+    <button class="act" id="pipeBtn">Pipeline<span class="badge" id="pipeBadge"></span><small>Everything you are waiting on, across every panel</small></button>
 
     <button class="act" id="syncNow" style="display:none">Sync now<small id="syncNowSub">Pull, then push</small></button>
     <button class="act" id="pushBtn" style="display:none">Push this device up<small>Overwrites the cloud copy with what's here</small></button>
     <button class="act" id="pullBtn" style="display:none">Pull from cloud<small>Replaces everything here with the cloud copy</small></button>
     <button class="act" id="syncSetup">Set up sync<small id="syncSetupSub">Sync between phone and computer</small></button>
 
-    <button class="act" id="manageTabs">Manage lists<small id="manageTabsSub">Add, rename or remove tabs</small></button>
-    <button class="act" id="exp">Save a backup<small>Downloads every list as a file</small></button>
+    <button class="act" id="manageTabs">Panels<small id="manageTabsSub">Add, rename, recolour or reorder</small></button>
+    <button class="act" id="exp">Save a backup<small>Downloads every panel as a file</small></button>
     <button class="act" id="imp">Restore from backup<small>Replaces everything currently stored</small></button>
     <div class="stamp" id="stamp"></div>
   </div>
 </div>
 <input type="file" id="file" accept="application/json,.json">
 
-<!-- sync setup panel -->
-<!-- tab management panel -->
+<!-- panel management -->
 <div class="sheet" id="tabSheet">
   <div class="wrap">
-    <h2>Lists</h2>
+    <h2>Panels</h2>
     <div id="tabList" class="tablist"></div>
     <div class="subadd" style="padding-left:0;padding-right:0">
       <div class="plus"></div>
-      <input id="newTabIn" type="text" placeholder="Add a list" autocomplete="off" enterkeyhint="done">
+      <input id="newTabIn" type="text" placeholder="Add a panel" autocomplete="off" enterkeyhint="done">
     </div>
     <div class="syncmsg" id="tabMsg"></div>
     <button class="act" id="tabBack"><small>Done</small></button>
@@ -630,13 +824,33 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   </div>
 </div>
 
+<!-- pipeline: everything being waited on, across panels -->
+<div class="detail" id="pipe">
+  <div class="dhead">
+    <div class="wrap">
+      <button class="back" id="pipeBack" aria-label="Back to panels">
+        <svg viewBox="0 0 7 12" fill="none"><path d="M6 1 L1 6 L6 11" stroke="currentColor" stroke-width="1.4"/></svg>
+        Panels
+      </button>
+      <div class="dtabname" id="pipeCount"></div>
+    </div>
+  </div>
+  <div class="pipetools">
+    <div class="wrap">
+      <button class="chip" id="sortAge">Oldest first</button>
+      <button class="chip" id="sortPanel">By panel</button>
+    </div>
+  </div>
+  <div class="dbody" id="pipebody"></div>
+</div>
+
 <!-- detail view -->
 <div class="detail" id="detail">
   <div class="dhead">
     <div class="wrap">
-      <button class="back" id="back" aria-label="Back to list">
+      <button class="back" id="back" aria-label="Back">
         <svg viewBox="0 0 7 12" fill="none"><path d="M6 1 L1 6 L6 11" stroke="currentColor" stroke-width="1.4"/></svg>
-        Lists
+        <span id="backLabel">Panels</span>
       </button>
       <div class="dtabname" id="dtabname"></div>
     </div>
@@ -646,22 +860,44 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 
 <script>
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
-const KEY  = 'ledger.v1';
-const TABKEY = KEY + '.tabs';
+
+/* storage keys — ledger.v1 is permanent and is never renamed */
+const KEY     = 'ledger.v1';
+const TABKEY  = KEY + '.tabs';
+const PANKEY  = KEY + '.panels';
+const UIKEY   = KEY + '.ui';
+
 const WIDE = window.matchMedia('(min-width:1000px)');
 
-/* TABS is now user-managed. It is derived from saved tab order, but any
-   tab found in stored data is always kept so items can never be orphaned. */
-let TABS = loadTabs();
-let data = load();
+/* panel accents — muted, all at home in the dark palette */
+const ACCENTS = ['#BBA37D','#8FA189','#7D91AC','#B4897E','#9A87A8','#8C8C88'];
+
+/* an item counts as stale once nothing has happened for this long */
+const STALE_DAYS = 10;
+
+/* set false when anything in storage could not be read as expected, so the
+   migrated copy is never written back over data we failed to understand */
+let loadClean = true;
+let storageFailed = false;
+
+let TABS   = loadTabs();
+let PANELS = loadPanels();      /* {panelName: {accent:int}} */
+let UI     = loadUI();          /* {waitOpen:{panel:bool}, pipeSort:'age'|'panel'} */
+let data   = load();
 reconcileTabs();
 
-let active = localStorage.getItem(KEY + '.tab') || TABS[0];
+let active = TABS[0];
+try{ active = localStorage.getItem(KEY + '.tab') || TABS[0]; }catch(e){}
 if(!TABS.includes(active)) active = TABS[0];
 
 /* open detail state */
-let openTab = null;
+let openTab  = null;
 let openItem = null;
+let cameFromPipe = false;
+
+function uid(){
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 
 function loadTabs(){
   try{
@@ -671,44 +907,116 @@ function loadTabs(){
   return DEFAULT_TABS.slice();
 }
 
-/* Load every list present in storage, not just the known tabs, so nothing
+function loadPanels(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(PANKEY) || 'null');
+    if(saved && typeof saved === 'object' && !Array.isArray(saved)) return saved;
+  }catch(e){}
+  return {};
+}
+
+function loadUI(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(UIKEY) || 'null');
+    if(saved && typeof saved === 'object'){
+      return {
+        waitOpen: (saved.waitOpen && typeof saved.waitOpen === 'object') ? saved.waitOpen : {},
+        pipeSort: saved.pipeSort === 'panel' ? 'panel' : 'age',
+      };
+    }
+  }catch(e){}
+  return { waitOpen:{}, pipeSort:'age' };
+}
+
+/* Load every panel present in storage, not just the known tabs, so nothing
    is ever silently dropped. */
 function load(){
   const out = {};
   TABS.forEach(t => out[t] = []);
-  try{
-    const raw = JSON.parse(localStorage.getItem(KEY) || '{}');
-    Object.keys(raw).forEach(t => {
-      if(Array.isArray(raw[t])) out[t] = raw[t].map(normalize);
-    });
-  }catch(e){}
+  let txt = null;
+  try{ txt = localStorage.getItem(KEY); }
+  catch(e){ loadClean = false; return out; }
+  if(txt === null || txt === '') return out;      /* genuinely empty, not damaged */
+
+  let raw = null;
+  try{ raw = JSON.parse(txt); }catch(e){ raw = null; }
+  if(!raw || typeof raw !== 'object' || Array.isArray(raw)){
+    loadClean = false; keepRescueCopy(txt); return out;
+  }
+  Object.keys(raw).forEach(t => {
+    if(Array.isArray(raw[t])) out[t] = raw[t].map(normalize);
+    else { loadClean = false; keepRescueCopy(txt); }
+  });
   return out;
 }
 
-/* Any tab that has data but isn't in the tab list gets appended, and any
-   listed tab without data gets an empty list. Guarantees they stay in step. */
+/* stash the exact bytes we could not read, once, so nothing is unrecoverable */
+function keepRescueCopy(txt){
+  try{
+    if(!localStorage.getItem(KEY + '.rescue')) localStorage.setItem(KEY + '.rescue', txt);
+  }catch(e){}
+}
+
+/* Any panel that has data but isn't in the list gets appended, any listed
+   panel without data gets an empty list, and every panel gets an accent. */
 function reconcileTabs(){
   Object.keys(data).forEach(t => { if(!TABS.includes(t)) TABS.push(t); });
   TABS.forEach(t => { if(!Array.isArray(data[t])) data[t] = []; });
   if(!TABS.length){ TABS = DEFAULT_TABS.slice(); TABS.forEach(t => data[t] = data[t] || []); }
+  TABS.forEach((t, i) => {
+    const cur = PANELS[t];
+    const acc = cur && Number.isInteger(cur.accent) ? cur.accent : (i % ACCENTS.length);
+    PANELS[t] = Object.assign({}, cur, { accent: ((acc % ACCENTS.length) + ACCENTS.length) % ACCENTS.length });
+  });
+  Object.keys(PANELS).forEach(t => { if(!TABS.includes(t)) delete PANELS[t]; });
 }
 
-/* ensure every item has the current fields; older items just gain defaults */
+function accentOf(tab){
+  const p = PANELS[tab];
+  return ACCENTS[(p && Number.isInteger(p.accent)) ? p.accent : 0] || ACCENTS[0];
+}
+
+/* Bring an item up to the current shape. Unknown fields are carried through
+   untouched, so nothing a past or future version stored is ever discarded. */
 function normalize(it){
-  return {
-    t: it.t || '',
-    done: !!it.done,
-    wait: !!it.wait,
-    notes: typeof it.notes === 'string' ? it.notes : '',
-    subs: Array.isArray(it.subs) ? it.subs.map(s => ({t: s.t || '', done: !!s.done})) : []
-  };
+  const o = (it && typeof it === 'object' && !Array.isArray(it)) ? Object.assign({}, it) : {};
+  o.id    = (typeof o.id === 'string' && o.id) ? o.id : uid();
+  o.t     = typeof o.t === 'string' ? o.t
+          : (typeof o.text === 'string' ? o.text : (typeof o.title === 'string' ? o.title : ''));
+  o.done  = !!o.done;
+  o.wait  = !!o.wait;
+  o.who   = typeof o.who === 'string' ? o.who : '';
+  o.notes = typeof o.notes === 'string' ? o.notes : '';
+  o.subs  = Array.isArray(o.subs)
+          ? o.subs.map(s => (s && typeof s === 'object')
+              ? Object.assign({}, s, {t: typeof s.t === 'string' ? s.t : '', done: !!s.done})
+              : {t: String(s == null ? '' : s), done:false})
+          : [];
+  o.since  = typeof o.since  === 'number' ? o.since  : null;
+  o.nudged = typeof o.nudged === 'number' ? o.nudged : null;
+  /* an item already marked waiting before this version has no start date —
+     begin its clock now rather than pretending it is ancient */
+  if(o.wait && !o.since) o.since = Date.now();
+  if(!o.wait){ o.since = null; o.nudged = null; }
+  return o;
+}
+
+/* each key is written on its own: a quota failure on one must not silently
+   skip the rest, and a failure on the items themselves has to be visible */
+function put(k, v){
+  try{ localStorage.setItem(k, v); return true; }
+  catch(e){ return false; }
 }
 function save(){
-  try{
-    localStorage.setItem(KEY, JSON.stringify(data));
-    localStorage.setItem(TABKEY, JSON.stringify(TABS));
-    localStorage.setItem(KEY + '.tab', active);
-  }catch(e){}
+  const okItems = put(KEY, JSON.stringify(data));
+  put(TABKEY, JSON.stringify(TABS));
+  put(PANKEY, JSON.stringify(PANELS));
+  put(UIKEY, JSON.stringify(UI));
+  put(KEY + '.tab', active);
+  if(storageFailed !== !okItems){ storageFailed = !okItems; renderAlerts(); }
+}
+function saveUI(){
+  try{ localStorage.setItem(UIKEY, JSON.stringify(UI)); }catch(e){}
 }
 
 const navwrap  = document.getElementById('navwrap');
@@ -724,11 +1032,13 @@ const file     = document.getElementById('file');
 const detail   = document.getElementById('detail');
 const dbody    = document.getElementById('dbody');
 const dtabname = document.getElementById('dtabname');
+const pipe     = document.getElementById('pipe');
+const pipebody = document.getElementById('pipebody');
 
-/* Adopt an incoming set of lists (from cloud or a backup file) without
-   dropping any list it contains. Tab order follows the incoming order,
-   with any extra local tabs appended. */
-function adoptLists(lists, order){
+/* Adopt an incoming set of panels (from cloud or a backup file) without
+   dropping any panel it contains. Order follows the incoming order, with
+   any extra local panels appended. */
+function adoptLists(lists, order, panels){
   const next = {};
   const incoming = Object.keys(lists).filter(k => Array.isArray(lists[k]));
   incoming.forEach(k => next[k] = lists[k].map(normalize));
@@ -740,6 +1050,13 @@ function adoptLists(lists, order){
   if(!newTabs.length) return false;
   data = next;
   TABS = newTabs;
+  if(panels && typeof panels === 'object' && !Array.isArray(panels)){
+    const merged = {};
+    Object.keys(panels).forEach(k => {
+      if(panels[k] && Number.isInteger(panels[k].accent)) merged[k] = {accent: panels[k].accent};
+    });
+    PANELS = merged;
+  }
   reconcileTabs();
   if(!TABS.includes(active)) active = TABS[0];
   return true;
@@ -747,16 +1064,57 @@ function adoptLists(lists, order){
 
 function openCount(tab){ return (data[tab]||[]).filter(i => !i.done && !i.wait).length; }
 function waitCount(tab){ return (data[tab]||[]).filter(i => i.wait && !i.done).length; }
+function totalWaiting(){ return TABS.reduce((n,t) => n + waitCount(t), 0); }
 function subFrac(item){
   if(!item.subs.length) return null;
   return item.subs.filter(s => s.done).length + '/' + item.subs.length;
 }
 
-/* ---------- a single list row ---------- */
+/* ---------- waiting helpers ---------- */
+const DAY = 86400000;
+
+function daysSince(ms){
+  if(!ms) return 0;
+  return Math.floor((Date.now() - ms) / DAY);
+}
+/* how long this has sat without any movement */
+function quietDays(item){
+  return daysSince(item.nudged || item.since);
+}
+function isStale(item){
+  return !!item.since && quietDays(item) >= STALE_DAYS;
+}
+function ageText(ms){
+  if(!ms) return '';
+  const d = daysSince(ms);
+  if(d <= 0) return 'today';
+  if(d === 1) return '1 day';
+  if(d < 14)  return d + ' days';
+  if(d < 63)  return Math.round(d / 7) + ' wks';
+  return Math.round(d / 30) + ' mo';
+}
+function shortAge(ms){
+  if(!ms) return '';
+  const d = daysSince(ms);
+  if(d <= 0) return 'today';
+  if(d < 14)  return d + 'd';
+  if(d < 63)  return Math.round(d / 7) + 'w';
+  return Math.round(d / 30) + 'mo';
+}
+
+function setWait(item, on){
+  item.wait = !!on;
+  if(item.wait){
+    item.done = false;
+    if(!item.since) item.since = Date.now();
+  }else{
+    item.since = null;
+    item.nudged = null;
+  }
+}
 function toggleWait(item){
-  item.wait = !item.wait;
-  if(item.wait) item.done = false;   // waiting and done are exclusive
-  save(); render();
+  setWait(item, !item.wait);
+  save(); render(); renderPipe();
   if(navigator.vibrate) navigator.vibrate(12);
 }
 
@@ -801,7 +1159,7 @@ function itemRow(tab, item){
   box.onclick = e => {
     e.stopPropagation();
     item.done = !item.done;
-    if(item.done) item.wait = false;
+    if(item.done) setWait(item, false);
     save(); render();
   };
 
@@ -823,8 +1181,8 @@ function itemRow(tab, item){
     meta.className = 'meta';
     if(showWait){
       const w = document.createElement('span');
-      w.className = 'wtag';
-      w.textContent = 'waiting';
+      w.className = 'wtag' + (isStale(item) ? ' stale' : '');
+      w.textContent = (item.who.trim() ? item.who.trim() : 'waiting') + ' · ' + shortAge(item.since);
       meta.appendChild(w);
     }
     if(item.notes.trim()){
@@ -856,9 +1214,14 @@ function itemRow(tab, item){
 function emptyBlock(tab){
   const d = document.createElement('div');
   d.className = 'empty';
-  d.innerHTML = '<div class="line"></div><p>Nothing on the ' + tab +
-                ' list.</p><span>Add the first item below</span>';
+  d.innerHTML = '<div class="line"></div><p>Nothing on the ' + escapeHtml(tab) +
+                ' panel.</p><span>Add the first item below</span>';
   return d;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => (
+    {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+  ));
 }
 function sweepBtn(tab){
   const s = document.createElement('button');
@@ -867,35 +1230,61 @@ function sweepBtn(tab){
   s.onclick = () => { data[tab] = data[tab].filter(i => !i.done); save(); render(); };
   return s;
 }
+
+/* a panel's waiting group starts collapsed and remembers what you set */
+function waitOpenFor(tab){
+  return UI.waitOpen[tab] === true;
+}
+
 function listInto(host, tab){
   const items = data[tab];
   if(!items.length){ host.appendChild(emptyBlock(tab)); return; }
-  /* tier 0 = active, 1 = waiting, 2 = done */
-  const tier = i => i.done ? 2 : (i.wait ? 1 : 0);
-  const sorted = [...items].sort((a,b) => tier(a) - tier(b));
 
-  let lastTier = null;
-  sorted.forEach(item => {
-    const t = tier(item);
-    if(t === 1 && lastTier === 0) host.appendChild(tierRule('Waiting on someone else'));
-    lastTier = t;
-    host.appendChild(itemRow(tab, item));
-  });
-  if(items.some(i => i.done)) host.appendChild(sweepBtn(tab));
+  const activeItems = items.filter(i => !i.done && !i.wait);
+  const waiting     = items.filter(i => !i.done && i.wait)
+                           .sort((a,b) => (a.since || 0) - (b.since || 0));
+  const doneItems   = items.filter(i => i.done);
+
+  activeItems.forEach(i => host.appendChild(itemRow(tab, i)));
+
+  if(waiting.length){
+    const open = waitOpenFor(tab);
+    const stale = waiting.filter(isStale).length;
+    host.appendChild(tierRule(tab, waiting.length, stale, open));
+    if(open) waiting.forEach(i => host.appendChild(itemRow(tab, i)));
+  }
+
+  doneItems.forEach(i => host.appendChild(itemRow(tab, i)));
+  if(doneItems.length) host.appendChild(sweepBtn(tab));
 }
 
-/* a faint labelled divider introducing the waiting group */
-function tierRule(label){
-  const d = document.createElement('div');
-  d.className = 'tierrule';
-  d.innerHTML = '<span>' + label + '</span>';
-  return d;
+/* faint labelled divider introducing the waiting group; tapping folds it away */
+function tierRule(tab, n, stale, open){
+  const b = document.createElement('button');
+  b.className = 'tierrule' + (open ? '' : ' shut');
+  b.setAttribute('aria-expanded', open ? 'true' : 'false');
+  const label = document.createElement('span');
+  label.textContent = 'Waiting on others';
+  const num = document.createElement('span');
+  num.className = 'tn';
+  num.textContent = stale ? n + ' · ' + stale + ' stale' : String(n);
+  const line = document.createElement('span');
+  line.className = 'tl';
+  const wedge = document.createElement('span');
+  wedge.className = 'tw';
+  b.append(label, num, line, wedge);
+  b.onclick = () => {
+    UI.waitOpen[tab] = !open;
+    saveUI();
+    render();
+  };
+  return b;
 }
 
 function addTo(tab, value){
   const v = value.trim();
   if(!v) return false;
-  data[tab].unshift({t: v, done: false, wait: false, notes: '', subs: []});
+  data[tab].unshift(normalize({t: v}));
   save();
   return true;
 }
@@ -905,25 +1294,68 @@ function renderTabs(){
   navwrap.innerHTML = '';
   TABS.forEach(t => {
     const open = openCount(t);
+    const wait = waitCount(t);
     const b = document.createElement('button');
     b.className = 'tab' + (t === active ? ' on' : '');
-    b.innerHTML = t + (open ? ' <span class="n">' + open + '</span>' : '');
+    b.style.setProperty('--acc', accentOf(t));
+    b.innerHTML = escapeHtml(t)
+      + (open ? ' <span class="n">' + open + '</span>' : '')
+      + (wait ? ' <span class="w">+' + wait + '</span>' : '');
     b.onclick = () => { active = t; save(); render(); };
     navwrap.appendChild(b);
   });
+  const plus = document.createElement('button');
+  plus.className = 'tabadd';
+  plus.setAttribute('aria-label','Add a panel');
+  plus.textContent = '+';
+  plus.onclick = () => openTabSheet(true);
+  navwrap.appendChild(plus);
 }
 function renderNarrow(){
   renderTabs();
-  const open = openCount(active);
-  count.textContent = open ? open + ' open' : '';
+  renderCount(openCount(active), totalWaiting());
   stage.innerHTML = '';
   listInto(stage, active);
 }
 
-/* ---------- wide: four columns ---------- */
+function renderCount(open, waiting){
+  count.innerHTML = '';
+  if(open){
+    const o = document.createElement('span');
+    o.textContent = open + ' open';
+    count.appendChild(o);
+  }
+  if(waiting){
+    if(open){
+      const s = document.createElement('span');
+      s.className = 'sep'; s.textContent = '·';
+      count.appendChild(s);
+    }
+    const w = document.createElement('button');
+    w.className = 'waitlink';
+    w.textContent = waiting + ' waiting';
+    w.onclick = openPipe;
+    count.appendChild(w);
+  }
+  if(needsAttention()){
+    const a = document.createElement('button');
+    a.className = 'alertdot';
+    a.setAttribute('aria-label','Something needs your attention');
+    a.title = storageFailed ? 'This device is out of storage'
+            : (!loadClean ? 'Some stored data could not be read' : 'Sync needs a decision');
+    a.innerHTML = '<i></i>';
+    a.onclick = openSheet;
+    count.appendChild(a);
+  }
+}
+
+function needsAttention(){ return conflictPending || storageFailed || !loadClean; }
+function renderAlerts(){ render(); }
+
+/* ---------- wide: board of panels ---------- */
 function renderWide(){
   const total = TABS.reduce((n,t) => n + openCount(t), 0);
-  count.textContent = total ? total + ' open' : '';
+  renderCount(total, totalWaiting());
   stage.innerHTML = '';
   const board = document.createElement('div');
   board.className = 'board';
@@ -931,14 +1363,26 @@ function renderWide(){
   TABS.forEach(tab => {
     const col = document.createElement('div');
     col.className = 'col';
+    col.style.setProperty('--acc', accentOf(tab));
+
     const head = document.createElement('div');
     head.className = 'colhead';
-    const h = document.createElement('h3'); h.textContent = tab; head.appendChild(h);
+    const dot = document.createElement('span'); dot.className = 'pdot';
+    const h = document.createElement('h3'); h.textContent = tab;
+    head.append(dot, h);
     const open = openCount(tab);
     if(open){ const n = document.createElement('span'); n.className='n'; n.textContent=open; head.appendChild(n); }
+    const cm = document.createElement('button');
+    cm.className = 'colmenu';
+    cm.innerHTML = '&#8943;';
+    cm.setAttribute('aria-label','Panel settings');
+    cm.onclick = () => openTabSheet(false, tab);
+    head.appendChild(cm);
+
     const items = document.createElement('div');
     items.className = 'items';
     listInto(items, tab);
+
     const foot = document.createElement('div');
     foot.className = 'colfoot';
     const comp = document.createElement('div');
@@ -953,6 +1397,17 @@ function renderWide(){
     col.append(head, items, foot);
     board.appendChild(col);
   });
+
+  /* a permanently available slot for a new panel */
+  const addCol = document.createElement('div');
+  addCol.className = 'col coladd';
+  const addB = document.createElement('button');
+  addB.textContent = '+';
+  addB.setAttribute('aria-label','Add a panel');
+  addB.onclick = () => openTabSheet(true);
+  addCol.appendChild(addB);
+  board.appendChild(addCol);
+
   stage.appendChild(board);
 }
 let refocus = null;
@@ -964,6 +1419,7 @@ function render(){
     if(inp) inp.focus();
   }
   refocus = null;
+  document.getElementById('pipeBadge').textContent = totalWaiting() || '';
   /* keep an open detail view in sync */
   if(openItem) renderDetail();
 }
@@ -987,8 +1443,10 @@ else WIDE.addListener(render);
 /* ---------- detail view ---------- */
 function autogrow(el){ el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 
-function openDetail(tab, item){
+function openDetail(tab, item, fromPipe){
   openTab = tab; openItem = item;
+  cameFromPipe = !!fromPipe;
+  document.getElementById('backLabel').textContent = cameFromPipe ? 'Pipeline' : 'Panels';
   renderDetail();
   detail.classList.add('up');
   scrim.classList.add('up');
@@ -996,15 +1454,25 @@ function openDetail(tab, item){
 }
 function closeDetail(){
   detail.classList.remove('up');
-  scrim.classList.remove('up');
   openTab = null; openItem = null;
+  if(cameFromPipe){
+    /* the pipeline is still standing underneath — fall back onto it */
+    cameFromPipe = false;
+    renderPipe();
+  }else{
+    scrim.classList.remove('up');
+  }
   render();
 }
 
 function renderDetail(){
   if(!openItem) return;
   const item = openItem;
-  dtabname.textContent = openTab;
+  dtabname.innerHTML = '';
+  const pd = document.createElement('span'); pd.className = 'pdot';
+  dtabname.style.setProperty('--acc', accentOf(openTab));
+  const pn = document.createElement('span'); pn.textContent = openTab;
+  dtabname.append(pd, pn);
   detail.classList.toggle('done-item', item.done);
   dbody.innerHTML = '';
 
@@ -1013,7 +1481,11 @@ function renderDetail(){
   title.className = 'dtitle';
   const box = document.createElement('button');
   box.className = 'box';
-  box.onclick = () => { item.done = !item.done; save(); detail.classList.toggle('done-item', item.done); render(); };
+  box.onclick = () => {
+    item.done = !item.done;
+    if(item.done) setWait(item, false);
+    save(); renderDetail(); render();
+  };
   const tarea = document.createElement('textarea');
   tarea.className = 'dtitle-txt';
   tarea.rows = 1;
@@ -1024,9 +1496,50 @@ function renderDetail(){
   title.append(box, tarea);
   dbody.appendChild(title);
 
+  /* waiting block — only while the item is actually waiting */
+  if(item.wait && !item.done){
+    const wlabel = document.createElement('div');
+    wlabel.className = 'dlabel';
+    const wl = document.createElement('span'); wl.textContent = 'Waiting on';
+    const ag = document.createElement('span');
+    ag.className = 'age' + (isStale(item) ? ' stale' : '');
+    ag.textContent = ageText(item.since) === 'today' ? 'since today' : ageText(item.since);
+    wlabel.append(wl, ag);
+    dbody.appendChild(wlabel);
+
+    const wbox = document.createElement('div');
+    wbox.className = 'waitbox';
+    const who = document.createElement('input');
+    who.className = 'whoin';
+    who.type = 'text';
+    who.placeholder = 'Who or what you are waiting on';
+    who.value = item.who;
+    who.autocomplete = 'off';
+    who.setAttribute('enterkeyhint','done');
+    who.addEventListener('input', () => { item.who = who.value; save(); });
+    who.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); who.blur(); } });
+    wbox.appendChild(who);
+
+    const mrow = document.createElement('div');
+    mrow.className = 'microrow';
+
+    const chase = document.createElement('button');
+    chase.className = 'micro';
+    chase.textContent = item.nudged
+      ? 'Chased again today (last ' + ageText(item.nudged) + ' ago)'
+      : 'Mark chased today';
+    chase.onclick = () => { item.nudged = Date.now(); save(); renderDetail(); render(); };
+    mrow.appendChild(chase);
+
+    wbox.appendChild(mrow);
+    dbody.appendChild(wbox);
+  }
+
   /* notes */
   const nlabel = document.createElement('div');
-  nlabel.className = 'dlabel'; nlabel.textContent = 'Notes';
+  nlabel.className = 'dlabel';
+  const nl = document.createElement('span'); nl.textContent = 'Notes';
+  nlabel.appendChild(nl);
   dbody.appendChild(nlabel);
   const notes = document.createElement('textarea');
   notes.className = 'notes';
@@ -1038,7 +1551,8 @@ function renderDetail(){
   /* sub-items */
   const slabel = document.createElement('div');
   slabel.className = 'dlabel';
-  slabel.textContent = 'Checklist';
+  const sl = document.createElement('span'); sl.textContent = 'Checklist';
+  slabel.appendChild(sl);
   dbody.appendChild(slabel);
 
   item.subs.forEach((s, idx) => {
@@ -1052,7 +1566,7 @@ function renderDetail(){
     st.textContent = s.t;
     const sd = document.createElement('button');
     sd.className = 'sub-del';
-    sd.textContent = '\u00d7';
+    sd.textContent = '×';
     sd.onclick = () => { item.subs.splice(idx,1); save(); renderDetail(); };
     row.append(sb, st, sd);
     dbody.appendChild(row);
@@ -1085,15 +1599,32 @@ function renderDetail(){
   const waitBtn = document.createElement('button');
   waitBtn.textContent = item.wait ? 'Stop waiting — make active' : 'Mark as waiting on someone else';
   waitBtn.onclick = () => {
-    item.wait = !item.wait;
-    if(item.wait) item.done = false;
+    setWait(item, !item.wait);
     save(); renderDetail(); render();
   };
   tools.appendChild(waitBtn);
 
+  /* move to another panel */
+  if(TABS.length > 1){
+    const nextUp = TABS[(TABS.indexOf(openTab) + 1) % TABS.length];
+    const moveBtn = document.createElement('button');
+    moveBtn.textContent = 'Move to ' + nextUp;
+    moveBtn.onclick = () => {
+      if(!Array.isArray(data[openTab])){ closeDetail(); return; }
+      const i = TABS.indexOf(openTab);
+      const nextTab = TABS[(i + 1) % TABS.length];
+      data[openTab] = data[openTab].filter(x => x !== item);
+      data[nextTab].unshift(item);
+      openTab = nextTab;
+      save(); renderDetail(); render();
+    };
+    tools.appendChild(moveBtn);
+  }
+
   const del = document.createElement('button');
   del.textContent = 'Delete this item';
   del.onclick = () => {
+    if(!Array.isArray(data[openTab])){ closeDetail(); return; }
     data[openTab] = data[openTab].filter(x => x !== item);
     save(); closeDetail();
   };
@@ -1106,7 +1637,142 @@ function renderDetail(){
 
 document.getElementById('back').onclick = closeDetail;
 
+/* ---------- pipeline: everything you are waiting on ---------- */
+const sortAgeBtn   = document.getElementById('sortAge');
+const sortPanelBtn = document.getElementById('sortPanel');
+
+function waitingEverywhere(){
+  const out = [];
+  TABS.forEach(tab => {
+    (data[tab] || []).forEach(item => {
+      if(item.wait && !item.done) out.push({tab, item});
+    });
+  });
+  return out;
+}
+
+function openPipe(){
+  closeSheet();
+  renderPipe();
+  pipe.classList.add('up');
+  scrim.classList.add('up');
+  pipebody.scrollTop = 0;
+}
+function closePipe(){
+  pipe.classList.remove('up');
+  scrim.classList.remove('up');
+}
+
+function renderPipe(){
+  sortAgeBtn.classList.toggle('on', UI.pipeSort !== 'panel');
+  sortPanelBtn.classList.toggle('on', UI.pipeSort === 'panel');
+
+  const rows = waitingEverywhere();
+  const stale = rows.filter(r => isStale(r.item)).length;
+  const pc = document.getElementById('pipeCount');
+  pc.textContent = rows.length
+    ? rows.length + (stale ? ' · ' + stale + ' stale' : '')
+    : '';
+
+  pipebody.innerHTML = '';
+
+  if(!rows.length){
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.innerHTML = '<div class="line"></div><p>Nothing is sitting with anyone else.</p>' +
+                  '<span>Hold an item to park it here</span>';
+    pipebody.appendChild(d);
+    return;
+  }
+
+  if(UI.pipeSort === 'panel'){
+    TABS.forEach(tab => {
+      const inTab = rows.filter(r => r.tab === tab)
+                        .sort((a,b) => (a.item.since || 0) - (b.item.since || 0));
+      if(!inTab.length) return;
+      const g = document.createElement('div');
+      g.className = 'pgroup';
+      g.style.setProperty('--acc', accentOf(tab));
+      const dot = document.createElement('span'); dot.className = 'pdot';
+      const nm = document.createElement('span'); nm.textContent = tab;
+      g.append(dot, nm);
+      pipebody.appendChild(g);
+      inTab.forEach(r => pipebody.appendChild(pipeRow(r.tab, r.item, false)));
+    });
+  }else{
+    rows.sort((a,b) => (a.item.nudged || a.item.since || 0) - (b.item.nudged || b.item.since || 0));
+    rows.forEach(r => pipebody.appendChild(pipeRow(r.tab, r.item, true)));
+  }
+}
+
+function pipeRow(tab, item, showPanel){
+  const row = document.createElement('div');
+  row.className = 'prow';
+  row.style.setProperty('--acc', accentOf(tab));
+
+  const top = document.createElement('div');
+  top.className = 'ptop';
+  if(showPanel){
+    const p = document.createElement('span');
+    p.className = 'ppanel';
+    p.textContent = tab;
+    top.appendChild(p);
+  }
+  const age = document.createElement('span');
+  age.className = 'page' + (isStale(item) ? ' stale' : '');
+  age.textContent = shortAge(item.since);
+  top.appendChild(age);
+  row.appendChild(top);
+
+  const txt = document.createElement('div');
+  txt.className = 'ptxt';
+  txt.textContent = item.t;
+  txt.onclick = () => openDetail(tab, item, true);
+  row.appendChild(txt);
+
+  const who = document.createElement('div');
+  who.className = 'pwho';
+  const bits = [];
+  bits.push(item.who.trim()
+    ? 'with ' + escapeHtml(item.who.trim())
+    : '<em>no one named</em>');
+  bits.push('since ' + ageText(item.since) + (ageText(item.since) === 'today' ? '' : ' ago'));
+  if(item.nudged) bits.push('chased ' + ageText(item.nudged) + (ageText(item.nudged) === 'today' ? '' : ' ago'));
+  who.innerHTML = bits.join(' &middot; ');
+  row.appendChild(who);
+
+  const acts = document.createElement('div');
+  acts.className = 'pacts';
+
+  const chase = document.createElement('button');
+  chase.className = 'micro';
+  chase.textContent = 'Chased';
+  chase.onclick = () => { item.nudged = Date.now(); save(); renderPipe(); render(); };
+
+  const back = document.createElement('button');
+  back.className = 'micro';
+  back.textContent = 'Unblock';
+  back.onclick = () => { setWait(item, false); save(); renderPipe(); render(); };
+
+  const done = document.createElement('button');
+  done.className = 'micro';
+  done.textContent = 'Done';
+  done.onclick = () => { setWait(item, false); item.done = true; save(); renderPipe(); render(); };
+
+  acts.append(chase, back, done);
+  row.appendChild(acts);
+  return row;
+}
+
+sortAgeBtn.onclick   = () => { UI.pipeSort = 'age';   saveUI(); renderPipe(); };
+sortPanelBtn.onclick = () => { UI.pipeSort = 'panel'; saveUI(); renderPipe(); };
+document.getElementById('pipeBack').onclick = closePipe;
+document.getElementById('pipeBtn').onclick  = openPipe;
+
 /* ========== SYNC ENGINE (private GitHub gist) ========== */
+const REVKEY   = KEY + '.gh.rev';
+const DIRTYKEY = KEY + '.dirty';
+
 const SYNC = {
   tokenKey: KEY + '.gh.token',
   gistKey:  KEY + '.gh.gist',
@@ -1115,9 +1781,19 @@ const SYNC = {
   get gist(){ return localStorage.getItem(this.gistKey) || ''; },
   get on(){ return !!(this.token && this.gist); },
   busy: false,
-  /* the revision this device last saw in the cloud */
-  lastRev: null,
+  /* the revision this device last saw in the cloud. Kept in storage so a
+     reload does not forget it and disarm the conflict guard. */
+  lastRev: (function(){ try{ return localStorage.getItem(REVKEY) || null; }catch(e){ return null; } })(),
 };
+
+function setRev(r){
+  SYNC.lastRev = r || null;
+  try{ r ? localStorage.setItem(REVKEY, r) : localStorage.removeItem(REVKEY); }catch(e){}
+}
+function setDirty(v){
+  dirty = !!v;
+  try{ v ? localStorage.setItem(DIRTYKEY, '1') : localStorage.removeItem(DIRTYKEY); }catch(e){}
+}
 
 const syncStatusEl = document.getElementById('syncStatus');
 const syncMsgEl    = document.getElementById('syncMsg');
@@ -1130,7 +1806,7 @@ function newRev(){
 function setStatus(state, text){
   // state: 'off' | 'on' | 'busy' | 'err' | 'warn'
   syncStatusEl.className = 'synced' + (state === 'off' ? '' : ' ' + state);
-  syncStatusEl.innerHTML = '<span class="led"></span>' + (text || '');
+  syncStatusEl.innerHTML = '<span class="led"></span>' + escapeHtml(text || '');
 }
 
 function reflectSyncButtons(){
@@ -1155,14 +1831,23 @@ async function ghFetch(path, opts){
   });
 }
 
-/* parse a gist file body into {rev, lists, order}, tolerating older formats */
+/* a stable fingerprint of the cloud copy, so a payload written without a
+   revision (an older format) can still be compared before we overwrite it */
+function fingerprint(s){
+  let h = 5381;
+  for(let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
+  return 'h' + h.toString(36) + '-' + s.length.toString(36);
+}
+
+/* parse a gist file body into {rev, lists, order, panels}, tolerating older
+   formats: the {__ledger, lists} wrapper, and the original bare panels object */
 function parseCloud(text){
   const raw = JSON.parse(text);
   if(raw && raw.__ledger && raw.lists){
-    return { rev: raw.rev || null, lists: raw.lists, order: raw.order || null };
+    return { rev: raw.rev || fingerprint(text), lists: raw.lists, order: raw.order || null, panels: raw.panels || null };
   }
-  // legacy: the file was just the tabs object
-  return { rev: null, lists: raw, order: null };
+  // legacy: the file was just the panels object
+  return { rev: fingerprint(text), lists: raw, order: null, panels: null };
 }
 
 /* read just the current cloud rev without disturbing local data.
@@ -1172,7 +1857,7 @@ async function fetchCloud(){
   if(!res.ok) throw new Error('HTTP ' + res.status);
   const gist = await res.json();
   const f = gist.files && gist.files[SYNC.fileName];
-  if(!f || !f.content) return { rev: null, lists: null };
+  if(!f || !f.content) return { rev: 'empty', lists: null };
   return parseCloud(f.content);
 }
 
@@ -1181,15 +1866,17 @@ async function syncPull(){
   if(!SYNC.on) return false;
   SYNC.busy = true; setStatus('busy', 'Pulling…');
   try{
-    const { rev, lists, order } = await fetchCloud();
+    const { rev, lists, order, panels } = await fetchCloud();
     if(lists && Object.keys(lists).length){
-      adoptLists(lists, order);
+      adoptLists(lists, order, panels);
       localStorage.setItem(KEY, JSON.stringify(data));
       localStorage.setItem(TABKEY, JSON.stringify(TABS));
+      localStorage.setItem(PANKEY, JSON.stringify(PANELS));
       if(openItem){ openItem = null; closeDetail(); }
       render();
+      if(pipe.classList.contains('up')) renderPipe();
     }
-    SYNC.lastRev = rev;
+    setRev(rev);
     SYNC.busy = false; setStatus('on', 'Up to date');
     return true;
   }catch(e){
@@ -1207,19 +1894,23 @@ async function syncPush(force){
     // conflict guard: if the cloud moved since we last saw it, don't clobber
     if(!force){
       const cloud = await fetchCloud();
-      if(cloud.rev && SYNC.lastRev && cloud.rev !== SYNC.lastRev){
+      /* no baseline is not consent: if this device has never seen the current
+         cloud copy, stop and let the user choose rather than overwriting it */
+      if(cloud.rev && cloud.rev !== SYNC.lastRev){
         SYNC.busy = false;
         setStatus('warn', 'Cloud changed — open menu');
         conflictPending = true;
+        render();
         return false;
       }
     }
     const rev = newRev();
-    const payload = { __ledger: 1, rev, order: TABS, lists: data };
+    const payload = { __ledger: 1, v: 5, rev, order: TABS, panels: PANELS, lists: data };
     const body = { files: { [SYNC.fileName]: { content: JSON.stringify(payload, null, 2) } } };
     const res = await ghFetch('/gists/' + SYNC.gist, { method:'PATCH', body: JSON.stringify(body) });
     if(!res.ok) throw new Error('HTTP ' + res.status);
-    SYNC.lastRev = rev;
+    setRev(rev);
+    setDirty(false);
     conflictPending = false;
     SYNC.busy = false; setStatus('on', 'Saved to cloud');
     return true;
@@ -1230,19 +1921,18 @@ async function syncPush(force){
 }
 
 let conflictPending = false;
-let dirty = false;  // true when this device has an edit not yet pushed
+/* true when this device has an edit that has not reached the cloud. Kept in
+   storage so a reload, a crash or a backgrounded PWA cannot forget it. */
+let dirty = (function(){ try{ return !!localStorage.getItem(DIRTYKEY); }catch(e){ return false; } })();
 
 /* debounced auto-push after edits */
 let pushTimer = null;
 function scheduleSync(){
   if(!SYNC.on) return;
-  dirty = true;
+  setDirty(true);
   setStatus('busy', 'Saving…');
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(async () => {
-    const ok = await syncPush(false);
-    if(ok) dirty = false;
-  }, 1400);
+  pushTimer = setTimeout(() => { syncPush(false); }, 1400);
 }
 
 /* wrap save() so every change schedules a push */
@@ -1253,6 +1943,15 @@ save = function(){ _save(); scheduleSync(); };
 function openSheet(){
   const total = TABS.reduce((n,t) => n + data[t].length, 0);
   stamp.textContent = total + (total === 1 ? ' item stored' : ' items stored');
+  const sm = document.getElementById('storeMsg');
+  sm.className = 'syncmsg' + (storageFailed || !loadClean ? ' err' : '');
+  sm.textContent = storageFailed
+    ? 'This device could not save. Storage is full — save a backup, then clear space.'
+    : (!loadClean
+        ? 'Part of what was stored here could not be read. The original was left untouched and copied aside under ledger.v1.rescue.'
+        : '');
+  sm.style.display = sm.textContent ? '' : 'none';
+  document.getElementById('pipeBadge').textContent = totalWaiting() || '';
   reflectSyncButtons();
   if(SYNC.on && conflictPending){
     setStatus('warn', 'Cloud changed elsewhere');
@@ -1273,11 +1972,13 @@ function openSyncSheet(){
 }
 function closeSyncSheet(){ syncSheet.classList.remove('up'); }
 
-/* ---------- manage lists ---------- */
+/* ---------- manage panels ---------- */
 const tabSheet  = document.getElementById('tabSheet');
 const tabListEl = document.getElementById('tabList');
 const tabMsgEl  = document.getElementById('tabMsg');
 const newTabIn  = document.getElementById('newTabIn');
+
+let paletteOpenFor = null;   /* panel name whose colour row is expanded */
 
 function tabMsg(text, kind){
   tabMsgEl.className = 'syncmsg' + (kind ? ' ' + kind : '');
@@ -1290,57 +1991,92 @@ function renderTabManager(){
     const row = document.createElement('div');
     row.className = 'tabrow';
 
+    const sw = document.createElement('button');
+    sw.className = 'swatch';
+    sw.style.setProperty('--acc', accentOf(name));
+    sw.setAttribute('aria-label','Panel colour');
+    sw.onclick = () => {
+      paletteOpenFor = (paletteOpenFor === name) ? null : name;
+      renderTabManager();
+    };
+
     const inp = document.createElement('input');
     inp.type = 'text';
     inp.value = name;
-    inp.setAttribute('aria-label', 'List name');
+    inp.setAttribute('aria-label', 'Panel name');
     inp.addEventListener('change', () => renameTab(i, inp.value));
     inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
 
     const cnt = document.createElement('span');
     cnt.className = 'cnt';
     const n = data[name] ? data[name].length : 0;
-    cnt.textContent = n === 1 ? '1 item' : n + ' items';
+    const w = waitCount(name);
+    cnt.textContent = (n === 1 ? '1 item' : n + ' items') + (w ? ' · ' + w + ' waiting' : '');
 
     const up = document.createElement('button');
-    up.className = 'tabbtn'; up.textContent = '\u2191';
+    up.className = 'tabbtn'; up.textContent = '↑';
     up.setAttribute('aria-label','Move up');
     up.disabled = (i === 0);
     up.onclick = () => moveTab(i, -1);
 
     const dn = document.createElement('button');
-    dn.className = 'tabbtn'; dn.textContent = '\u2193';
+    dn.className = 'tabbtn'; dn.textContent = '↓';
     dn.setAttribute('aria-label','Move down');
     dn.disabled = (i === TABS.length - 1);
     dn.onclick = () => moveTab(i, 1);
 
     const rm = document.createElement('button');
-    rm.className = 'tabbtn rm'; rm.textContent = '\u00d7';
-    rm.setAttribute('aria-label','Remove list');
+    rm.className = 'tabbtn rm'; rm.textContent = '×';
+    rm.setAttribute('aria-label','Remove panel');
     rm.disabled = (TABS.length <= 1);
     rm.onclick = () => removeTab(i);
 
-    row.append(inp, cnt, up, dn, rm);
+    row.append(sw, inp, cnt, up, dn, rm);
     tabListEl.appendChild(row);
+
+    if(paletteOpenFor === name){
+      const prow = document.createElement('div');
+      prow.className = 'tabrow pal';
+      const pal = document.createElement('div');
+      pal.className = 'palette';
+      ACCENTS.forEach((hex, idx) => {
+        const b = document.createElement('button');
+        b.style.color = hex;
+        b.className = (PANELS[name] && PANELS[name].accent === idx) ? 'on' : '';
+        b.setAttribute('aria-label','Set colour ' + (idx + 1));
+        b.onclick = () => {
+          PANELS[name] = Object.assign({}, PANELS[name], {accent: idx});
+          save(); renderTabManager(); render();
+        };
+        pal.appendChild(b);
+      });
+      prow.appendChild(pal);
+      tabListEl.appendChild(prow);
+    }
   });
 }
 
 function renameTab(i, raw){
   const next = (raw || '').trim();
   const prev = TABS[i];
-  if(!next){ tabMsg('A list needs a name.', 'err'); renderTabManager(); return; }
+  if(!next){ tabMsg('A panel needs a name.', 'err'); renderTabManager(); return; }
   if(next === prev){ tabMsg(''); return; }
   if(TABS.some((t, j) => j !== i && t.toLowerCase() === next.toLowerCase())){
-    tabMsg('There is already a list with that name.', 'err');
+    tabMsg('There is already a panel with that name.', 'err');
     renderTabManager(); return;
   }
-  /* carry the items across to the new key, preserving order of tabs */
+  /* carry the items and the accent across to the new key */
   const items = data[prev] || [];
+  const meta  = PANELS[prev];
   delete data[prev];
+  delete PANELS[prev];
   data[next] = items;
+  if(meta) PANELS[next] = meta;
   TABS[i] = next;
   if(active === prev) active = next;
   if(openTab === prev) openTab = next;
+  if(UI.waitOpen[prev] !== undefined){ UI.waitOpen[next] = UI.waitOpen[prev]; delete UI.waitOpen[prev]; }
+  if(paletteOpenFor === prev) paletteOpenFor = next;
   save(); renderTabManager(); render();
   tabMsg('Renamed. Items kept.', 'ok');
 }
@@ -1356,16 +2092,19 @@ function moveTab(i, dir){
 function removeTab(i){
   const name = TABS[i];
   const n = (data[name] || []).length;
-  if(TABS.length <= 1){ tabMsg('You need at least one list.', 'err'); return; }
+  if(TABS.length <= 1){ tabMsg('You need at least one panel.', 'err'); return; }
   const msg = n
     ? 'Delete "' + name + '" and its ' + n + (n === 1 ? ' item?' : ' items?') +
       '\n\nThis cannot be undone. Save a backup first if you are unsure.'
-    : 'Delete the empty list "' + name + '"?';
+    : 'Delete the empty panel "' + name + '"?';
   if(!confirm(msg)) return;
   TABS.splice(i, 1);
   delete data[name];
+  delete PANELS[name];
+  delete UI.waitOpen[name];
   if(active === name) active = TABS[0];
   if(openTab === name){ openTab = null; openItem = null; closeDetail(); }
+  if(paletteOpenFor === name) paletteOpenFor = null;
   save(); renderTabManager(); render();
   tabMsg('Removed "' + name + '".', 'ok');
 }
@@ -1374,23 +2113,27 @@ function addTab(raw){
   const name = (raw || '').trim();
   if(!name){ return false; }
   if(TABS.some(t => t.toLowerCase() === name.toLowerCase())){
-    tabMsg('There is already a list with that name.', 'err');
+    tabMsg('There is already a panel with that name.', 'err');
     return false;
   }
   TABS.push(name);
   if(!Array.isArray(data[name])) data[name] = [];
+  PANELS[name] = {accent: (TABS.length - 1) % ACCENTS.length};
   save(); renderTabManager(); render();
   tabMsg('Added "' + name + '".', 'ok');
   return true;
 }
 
-function openTabSheet(){
+function openTabSheet(focusNew, highlight){
   tabMsg('');
+  paletteOpenFor = highlight || null;
   renderTabManager();
   newTabIn.value = '';
+  closeSheet();
   tabSheet.classList.add('up'); scrim.classList.add('up');
+  if(focusNew) setTimeout(() => newTabIn.focus(), 340);
 }
-function closeTabSheet(){ tabSheet.classList.remove('up'); }
+function closeTabSheet(){ tabSheet.classList.remove('up'); scrim.classList.remove('up'); paletteOpenFor = null; }
 
 newTabIn.addEventListener('keydown', e => {
   if(e.key === 'Enter'){
@@ -1398,13 +2141,20 @@ newTabIn.addEventListener('keydown', e => {
     if(addTab(newTabIn.value)) newTabIn.value = '';
   }
 });
-document.getElementById('manageTabs').onclick = openTabSheet;
+document.getElementById('manageTabs').onclick = () => openTabSheet(false);
 document.getElementById('tabBack').onclick = closeTabSheet;
 
 document.getElementById('menu').onclick = openSheet;
-scrim.onclick = () => { closeSheet(); closeSyncSheet(); closeTabSheet(); if(openItem) closeDetail(); };
+scrim.onclick = () => {
+  if(openItem){ closeDetail(); return; }
+  if(pipe.classList.contains('up')){ closePipe(); return; }
+  closeSheet(); closeSyncSheet(); closeTabSheet();
+};
 document.addEventListener('keydown', e => {
-  if(e.key === 'Escape'){ closeSheet(); closeSyncSheet(); closeTabSheet(); if(openItem) closeDetail(); }
+  if(e.key !== 'Escape') return;
+  if(openItem){ closeDetail(); return; }
+  if(pipe.classList.contains('up')){ closePipe(); return; }
+  closeSheet(); closeSyncSheet(); closeTabSheet();
 });
 
 /* sync buttons */
@@ -1419,11 +2169,11 @@ document.getElementById('syncNow').onclick = async () => {
 document.getElementById('pushBtn').onclick = async () => {
   // explicit push is a deliberate "this device wins" — force past the guard
   const ok = await syncPush(true);
-  if(ok){ conflictPending = false; dirty = false; }
+  if(ok){ conflictPending = false; render(); }
 };
 document.getElementById('pullBtn').onclick = async () => {
   const ok = await syncPull();
-  if(ok){ conflictPending = false; dirty = false; }
+  if(ok){ conflictPending = false; setDirty(false); render(); }
 };
 
 document.getElementById('syncSave').onclick = async () => {
@@ -1442,7 +2192,7 @@ document.getElementById('syncSave').onclick = async () => {
     if(res.status === 404){ throw new Error('bad-gist'); }
     if(!res.ok){ throw new Error('http'); }
     // adopt the current cloud rev as our baseline so the guard has a reference
-    try{ const c = await fetchCloud(); SYNC.lastRev = c.rev; }catch(e){}
+    try{ const c = await fetchCloud(); setRev(c.rev); }catch(e){}
     syncMsgEl.classList.add('ok');
     syncMsgEl.textContent = 'Connected. Use Push on the device that already has your items, Pull on the other.';
     reflectSyncButtons();
@@ -1469,7 +2219,7 @@ document.getElementById('syncForget').onclick = () => {
 };
 
 document.getElementById('exp').onclick = () => {
-  const payload = { __ledger: 1, order: TABS, lists: data };
+  const payload = { __ledger: 1, v: 5, order: TABS, panels: PANELS, lists: data };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1489,11 +2239,14 @@ file.onchange = () => {
   r.onload = () => {
     try{
       const parsed = JSON.parse(r.result);
-      /* accept both the new {order, lists} wrapper and the older flat file */
-      const lists = (parsed && parsed.__ledger && parsed.lists) ? parsed.lists : parsed;
-      const order = (parsed && parsed.order) ? parsed.order : null;
+      /* accept the new wrapper, the older {order, lists} wrapper, and the
+         original flat file that was just the panels object */
+      const lists  = (parsed && parsed.__ledger && parsed.lists) ? parsed.lists : parsed;
+      const order  = (parsed && parsed.order)  ? parsed.order  : null;
+      const panels = (parsed && parsed.panels) ? parsed.panels : null;
       if(!lists || typeof lists !== 'object') throw new Error('shape');
-      if(!adoptLists(lists, order)) throw new Error('empty');
+      if(openItem){ openItem = null; closeDetail(); }
+      if(!adoptLists(lists, order, panels)) throw new Error('empty');
       save(); render(); closeSheet();
     }catch(e){
       stamp.textContent = "That file isn't a Ledger backup";
@@ -1503,23 +2256,27 @@ file.onchange = () => {
   file.value = '';
 };
 
+/* Write the migrated shape back so the first launch of a new version leaves
+   storage in the current format even before an edit — but only when every
+   byte in storage was understood. If anything failed to read, the original
+   is left exactly as it was (and copied to ledger.v1.rescue). */
+if(loadClean) _save();
+
 render();
 reflectSyncButtons();
 
 /* pull once on open so this device starts from the cloud copy */
 if(SYNC.on){
-  syncPull();
+  /* an edit this device never managed to push outranks the cloud copy: send it
+     up (conflict-guarded) instead of pulling straight over the top of it */
+  if(dirty) syncPush(false); else syncPull();
   /* when returning to the app after it was backgrounded:
      - if we have an unpushed edit, push it (conflict-guarded) instead of
        pulling, so we never silently discard local work
      - otherwise pull, so a device left open refreshes before you touch it */
   document.addEventListener('visibilitychange', () => {
     if(document.visibilityState !== 'visible' || SYNC.busy) return;
-    if(dirty){
-      syncPush(false).then(ok => { if(ok) dirty = false; });
-    }else{
-      syncPull();
-    }
+    if(dirty) syncPush(false); else syncPull();
   });
 }
 
