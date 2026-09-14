@@ -1,4 +1,4 @@
-const CACHE = 'ledger-v8';
+const CACHE = 'ledger-v9';
 
 const ASSETS = [
   './',
@@ -46,8 +46,17 @@ function isVersionProbe(req) {
   return u.origin === self.location.origin && u.searchParams.has('ts');
 }
 
+// Microsoft sign-in and Graph must never touch the cache: a cached ledger.json
+// would be served over a newer one, and the offline fallback would answer an
+// API call with the app's own HTML.
+function isApi(req) {
+  const h = new URL(req.url).hostname;
+  return h === 'graph.microsoft.com' || h === 'login.microsoftonline.com';
+}
+
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  if (isApi(e.request)) return;
 
   if (isVersionProbe(e.request)) {
     e.respondWith(fetch(e.request, { cache: 'no-store' }));

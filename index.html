@@ -830,10 +830,11 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 
     <button class="act" id="pipeBtn">Pipeline<span class="badge" id="pipeBadge"></span><small>Everything you are waiting on, across every panel</small></button>
 
-    <button class="act" id="syncNow" style="display:none">Sync now<small id="syncNowSub">Pull, then push</small></button>
-    <button class="act" id="pushBtn" style="display:none">Push this device up<small>Overwrites the cloud copy with what's here</small></button>
-    <button class="act" id="pullBtn" style="display:none">Pull from cloud<small>Replaces everything here with the cloud copy</small></button>
-    <button class="act" id="syncSetup">Set up sync<small id="syncSetupSub">Sync between phone and computer</small></button>
+    <button class="act" id="syncNow" style="display:none">Back up now<small id="syncNowSub">Save this device to OneDrive</small></button>
+    <button class="act" id="pushBtn" style="display:none">Push this device up<small>Overwrites the OneDrive copy with what's here</small></button>
+    <button class="act" id="pullBtn" style="display:none">Pull from OneDrive<small>Replaces everything here with the current OneDrive copy</small></button>
+    <button class="act" id="restoreCloud" style="display:none">Restore an earlier day<small>Every daily copy kept in OneDrive</small></button>
+    <button class="act" id="syncSetup">OneDrive<small id="syncSetupSub">Keep a copy in OneDrive</small></button>
 
     <button class="act" id="manageTabs">Panels<small id="manageTabsSub">Add, rename, recolour or reorder</small></button>
     <button class="act" id="exp">Save a backup<small>Downloads every panel as a file</small></button>
@@ -860,17 +861,22 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 
 <div class="sheet" id="syncSheet">
   <div class="wrap">
-    <h2>Sync setup</h2>
+    <h2>OneDrive</h2>
     <div class="syncform">
-      <label class="synclabel" for="tokenIn">GitHub token</label>
-      <input class="syncinput" id="tokenIn" type="password" placeholder="ghp_..." autocomplete="off" autocapitalize="off" spellcheck="false">
-      <label class="synclabel" for="gistIn">Gist ID</label>
-      <input class="syncinput" id="gistIn" type="text" placeholder="the id from the gist URL" autocomplete="off" autocapitalize="off" spellcheck="false">
       <div class="syncmsg" id="syncMsg"></div>
-      <button class="act" id="syncSave">Save &amp; connect<small>Checks the token, then links this device</small></button>
-      <button class="act" id="syncForget" style="display:none">Disconnect this device<small>Clears the token and gist here</small></button>
+      <button class="act" id="syncSave">Connect OneDrive<small>Sign in with your Microsoft account</small></button>
+      <button class="act" id="syncForget" style="display:none">Disconnect this device<small>Signs out here. The OneDrive copy is left alone.</small></button>
       <button class="act" id="syncBack"><small>Back</small></button>
     </div>
+  </div>
+</div>
+
+<div class="sheet" id="cloudSheet">
+  <div class="wrap">
+    <h2>Restore from OneDrive</h2>
+    <div class="syncmsg" id="cloudMsg"></div>
+    <div id="cloudList"></div>
+    <button class="act" id="cloudBack"><small>Back</small></button>
   </div>
 </div>
 
@@ -937,7 +943,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v8';
+const APP_VERSION = 'v9';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -2262,27 +2268,53 @@ document.getElementById('pdBack').onclick      = closeProject;
 document.getElementById('projBtn').onclick     = openProjects;
 document.getElementById('projMenuBtn').onclick = openProjects;
 
-/* ========== SYNC ENGINE (private GitHub gist) ========== */
-const REVKEY   = KEY + '.gh.rev';
-const DIRTYKEY = KEY + '.dirty';
+/* ========== CLOUD (OneDrive app folder, Entra SPA + PKCE) ==========
+   One device, one cloud copy. The browser talks to Graph directly: no server,
+   no client secret, nothing baked in that is worth stealing. The client and
+   tenant ids below are public by design in a PKCE app — they identify the
+   registration, they do not authorise anything.
 
-const SYNC = {
-  tokenKey: KEY + '.gh.token',
-  gistKey:  KEY + '.gh.gist',
-  fileName: 'ledger.json',
-  get token(){ return localStorage.getItem(this.tokenKey) || ''; },
-  get gist(){ return localStorage.getItem(this.gistKey) || ''; },
-  get on(){ return !!(this.token && this.gist); },
-  busy: false,
-  /* the revision this device last saw in the cloud. Kept in storage so a
-     reload does not forget it and disarm the conflict guard. */
-  lastRev: (function(){ try{ return localStorage.getItem(REVKEY) || null; }catch(e){ return null; } })(),
+   Live copy   Apps/Ledger/ledger.json
+   Backups     Apps/Ledger/backups/ledger-YYYY-MM-DD.json, one per day, kept  */
+
+const MS = {
+  clientId: 'e21c7b9e-a2e0-495c-8c5f-323b742e77b8',
+  tenant:   'eda7f9be-45b2-4af4-931f-aecfbecd1249',
+  scope:    'Files.ReadWrite.AppFolder offline_access User.Read',
+  file:     'ledger.json',
 };
 
-function setRev(r){
-  SYNC.lastRev = r || null;
-  try{ r ? localStorage.setItem(REVKEY, r) : localStorage.removeItem(REVKEY); }catch(e){}
+const AUTHKEY  = KEY + '.ms';        // { rt, at, exp, who, folder }
+const CTAGKEY  = KEY + '.ms.ctag';
+const BDAYKEY  = KEY + '.ms.bday';
+const PKCEKEY  = KEY + '.ms.pkce';
+const DIRTYKEY = KEY + '.dirty';
+
+function readAuth(){
+  try{ return JSON.parse(localStorage.getItem(AUTHKEY) || 'null'); }catch(e){ return null; }
 }
+function writeAuth(a){
+  try{ a ? localStorage.setItem(AUTHKEY, JSON.stringify(a)) : localStorage.removeItem(AUTHKEY); }catch(e){}
+}
+function saveTokens(j){
+  const a = readAuth() || {};
+  a.at  = j.access_token;
+  a.exp = Date.now() + ((j.expires_in || 3600) * 1000) - 120000;
+  if(j.refresh_token) a.rt = j.refresh_token;
+  writeAuth(a);
+}
+function ctag(){ try{ return localStorage.getItem(CTAGKEY) || null; }catch(e){ return null; } }
+function setCtag(v){
+  try{ v ? localStorage.setItem(CTAGKEY, v) : localStorage.removeItem(CTAGKEY); }catch(e){}
+}
+
+const SYNC = {
+  busy: false,
+  get on(){ const a = readAuth(); return !!(a && a.rt); },
+  get who(){ const a = readAuth(); return (a && a.who) || ''; },
+  get folder(){ const a = readAuth(); return (a && a.folder) || ''; },
+};
+
 function setDirty(v){
   dirty = !!v;
   try{ v ? localStorage.setItem(DIRTYKEY, '1') : localStorage.removeItem(DIRTYKEY); }catch(e){}
@@ -2304,62 +2336,173 @@ function setStatus(state, text){
 
 function reflectSyncButtons(){
   const on = SYNC.on;
-  document.getElementById('syncNow').style.display    = on ? '' : 'none';
-  document.getElementById('pushBtn').style.display    = on ? '' : 'none';
-  document.getElementById('pullBtn').style.display    = on ? '' : 'none';
+  document.getElementById('syncNow').style.display      = on ? '' : 'none';
+  document.getElementById('pushBtn').style.display      = on ? '' : 'none';
+  document.getElementById('pullBtn').style.display      = on ? '' : 'none';
+  document.getElementById('restoreCloud').style.display = on ? '' : 'none';
   document.getElementById('syncSetupSub').textContent = on
-    ? 'Connected — tap to manage' : 'Sync between phone and computer';
-  document.getElementById('syncForget').style.display = on ? '' : 'none';
-  if(on) setStatus('on', 'Sync connected'); else setStatus('off', 'Not syncing');
+    ? (SYNC.who || 'Connected') : 'Keep a copy in OneDrive';
+  if(on) setStatus('on', 'OneDrive connected'); else setStatus('off', 'Not backed up');
 }
 
-async function ghFetch(path, opts){
-  return fetch('https://api.github.com' + path, {
+/* ---------- PKCE ---------- */
+function b64url(buf){
+  let s = '';
+  const b = new Uint8Array(buf);
+  for(let i = 0; i < b.length; i++) s += String.fromCharCode(b[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function randStr(n){
+  const a = new Uint8Array(n); crypto.getRandomValues(a); return b64url(a.buffer);
+}
+async function challengeFor(verifier){
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  return b64url(d);
+}
+/* The registered redirect URI. index.html is stripped so a launch of
+   /mene/index.html and a launch of /mene/ both land on the same one. */
+function redirectUri(){
+  return (location.origin + location.pathname).replace(/index\.html$/, '');
+}
+
+async function msToken(body){
+  const res = await fetch('https://login.microsoftonline.com/' + MS.tenant + '/oauth2/v2.0/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(body).toString(),
+  });
+  let j = null;
+  try{ j = await res.json(); }catch(e){}
+  if(!res.ok || !j || !j.access_token) throw new Error((j && j.error) || ('HTTP ' + res.status));
+  return j;
+}
+
+async function msSignIn(){
+  const verifier = randStr(48);
+  const state    = randStr(12);
+  /* localStorage, not sessionStorage: an installed PWA can come back from the
+     sign-in redirect in a fresh session and a lost verifier is a dead end.
+     It is removed the moment the code is exchanged. */
+  try{ localStorage.setItem(PKCEKEY, JSON.stringify({ verifier, state })); }catch(e){}
+  const p = new URLSearchParams({
+    client_id: MS.clientId,
+    response_type: 'code',
+    redirect_uri: redirectUri(),
+    response_mode: 'query',
+    scope: MS.scope,
+    code_challenge: await challengeFor(verifier),
+    code_challenge_method: 'S256',
+    state: state,
+  });
+  location.href = 'https://login.microsoftonline.com/' + MS.tenant + '/oauth2/v2.0/authorize?' + p.toString();
+}
+
+/* Runs on every boot. Returns true when a sign-in has just completed. */
+async function msHandleRedirect(){
+  const q = new URLSearchParams(location.search);
+  const code = q.get('code');
+  const err  = q.get('error');
+  if(!code && !err) return false;
+
+  let saved = null;
+  try{ saved = JSON.parse(localStorage.getItem(PKCEKEY) || 'null'); }catch(e){}
+  try{ localStorage.removeItem(PKCEKEY); }catch(e){}
+  history.replaceState(null, '', redirectUri());
+
+  if(err){ setStatus('err', 'Sign-in was cancelled'); return false; }
+  if(!saved || saved.state !== q.get('state')){ setStatus('err', 'Sign-in did not match'); return false; }
+
+  try{
+    const j = await msToken({
+      client_id: MS.clientId,
+      grant_type: 'authorization_code',
+      code: code,
+      redirect_uri: redirectUri(),
+      code_verifier: saved.verifier,
+      scope: MS.scope,
+    });
+    saveTokens(j);
+    await msIdentify();
+    return true;
+  }catch(e){
+    setStatus('err', 'Sign-in failed');
+    return false;
+  }
+}
+
+/* A valid access token, refreshed if needed. Null when signed out. */
+async function msAccess(){
+  const a = readAuth();
+  if(!a || !a.rt) return null;
+  if(a.at && a.exp > Date.now()) return a.at;
+  try{
+    const j = await msToken({
+      client_id: MS.clientId,
+      grant_type: 'refresh_token',
+      refresh_token: a.rt,
+      scope: MS.scope,
+    });
+    saveTokens(j);
+    return j.access_token;
+  }catch(e){
+    /* invalid_grant means the refresh token is spent or revoked. Anything else
+       is most likely the network, and the tokens are worth keeping. */
+    if(String(e.message).indexOf('invalid_grant') === 0){ writeAuth(null); setCtag(null); }
+    return null;
+  }
+}
+
+async function gr(path, opts){
+  const at = await msAccess();
+  if(!at) throw new Error('signed-out');
+  return fetch('https://graph.microsoft.com/v1.0' + path, {
     ...opts,
-    headers: {
-      'Authorization': 'token ' + SYNC.token,
-      'Accept': 'application/vnd.github+json',
-      ...(opts && opts.headers ? opts.headers : {}),
-    },
+    cache: 'no-store',
+    headers: { 'Authorization': 'Bearer ' + at, ...((opts && opts.headers) || {}) },
   });
 }
 
-/* a stable fingerprint of the cloud copy, so a payload written without a
-   revision (an older format) can still be compared before we overwrite it */
-function fingerprint(s){
-  let h = 5381;
-  for(let i = 0; i < s.length; i++) h = ((h * 33) ^ s.charCodeAt(i)) >>> 0;
-  return 'h' + h.toString(36) + '-' + s.length.toString(36);
+/* Record who is signed in and which folder Graph actually gave us. The app
+   folder takes its name from the registration, so if that is ever renamed the
+   data moves and this is the only place it would show. */
+async function msIdentify(){
+  const a = readAuth(); if(!a) return;
+  try{
+    const me = await gr('/me?$select=displayName,userPrincipalName');
+    if(me.ok){ const j = await me.json(); a.who = j.userPrincipalName || j.displayName || ''; }
+    const root = await gr('/me/drive/special/approot');
+    if(root.ok){ const j = await root.json(); a.folder = j.name || ''; }
+    writeAuth(a);
+  }catch(e){}
 }
 
-/* parse a gist file body into {rev, lists, order}, tolerating older
-   formats: the {__ledger, lists} wrapper, and the original bare panels object */
+/* ---------- reading and writing the cloud copy ---------- */
+
+/* tolerates the current wrapper, the v5 wrapper, and a bare panels object */
 function parseCloud(text){
   const raw = JSON.parse(text);
-  if(raw && raw.__ledger && raw.lists){
-    return { rev: raw.rev || fingerprint(text), lists: raw.lists, order: raw.order || null };
-  }
-  // legacy: the file was just the panels object
-  return { rev: fingerprint(text), lists: raw, order: null };
+  if(raw && raw.__ledger && raw.lists) return { lists: raw.lists, order: raw.order || null };
+  return { lists: raw, order: null };
 }
 
-/* read just the current cloud rev without disturbing local data.
-   returns {rev, lists} or null on failure. */
-async function fetchCloud(){
-  const res = await ghFetch('/gists/' + SYNC.gist, { method:'GET', cache:'no-store' });
-  if(!res.ok) throw new Error('HTTP ' + res.status);
-  const gist = await res.json();
-  const f = gist.files && gist.files[SYNC.fileName];
-  if(!f || !f.content) return { rev: 'empty', lists: null };
-  return parseCloud(f.content);
-}
-
-/* pull cloud copy into the app. returns true on success. */
-async function syncPull(){
+async function cloudPull(){
   if(!SYNC.on) return false;
-  SYNC.busy = true; setStatus('busy', 'Pulling…');
+  SYNC.busy = true; setStatus('busy', 'Reading OneDrive\u2026');
   try{
-    const { rev, lists, order } = await fetchCloud();
+    const meta = await gr('/me/drive/special/approot:/' + MS.file);
+    if(meta.status === 404){
+      /* nothing up there yet: this device is the source */
+      setCtag(null);
+      SYNC.busy = false; setStatus('on', 'No copy in OneDrive yet');
+      return true;
+    }
+    if(!meta.ok) throw new Error('HTTP ' + meta.status);
+    const m = await meta.json();
+
+    const res = await gr('/me/drive/special/approot:/' + MS.file + ':/content');
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const { lists, order } = parseCloud(await res.text());
+
     if(lists && Object.keys(lists).length){
       adoptLists(lists, order);
       localStorage.setItem(KEY, JSON.stringify(data));
@@ -2368,52 +2511,169 @@ async function syncPull(){
       render();
       if(pipe.classList.contains('up')) renderPipe();
     }
-    setRev(rev);
+    setCtag(m.cTag || m.eTag || null);
     SYNC.busy = false; setStatus('on', 'Up to date');
     return true;
   }catch(e){
-    SYNC.busy = false; setStatus('err', 'Pull failed');
+    SYNC.busy = false;
+    setStatus('err', e.message === 'signed-out' ? 'Sign in again' : 'Could not read OneDrive');
     return false;
   }
 }
 
-/* push current app data up to the gist, stamping a fresh rev.
-   `force` skips the conflict check (used by the explicit Push button). */
-async function syncPush(force){
+/* `force` writes without the if-match guard: the deliberate "this device wins" */
+async function cloudPush(force){
   if(!SYNC.on) return false;
-  SYNC.busy = true; setStatus('busy', 'Pushing…');
+  SYNC.busy = true; setStatus('busy', 'Saving\u2026');
   try{
-    // conflict guard: if the cloud moved since we last saw it, don't clobber
-    if(!force){
-      const cloud = await fetchCloud();
-      /* no baseline is not consent: if this device has never seen the current
-         cloud copy, stop and let the user choose rather than overwriting it */
-      if(cloud.rev && cloud.rev !== SYNC.lastRev){
-        SYNC.busy = false;
-        setStatus('warn', 'Cloud changed — open menu');
-        conflictPending = true;
-        render();
-        return false;
-      }
+    const payload = { __ledger: 1, v: 6, rev: newRev(), order: TABS, lists: data };
+    const body    = JSON.stringify(payload, null, 2);
+    const headers = { 'Content-Type': 'application/json' };
+    const ct = ctag();
+    if(!force && ct) headers['if-match'] = ct;
+
+    const res = await gr('/me/drive/special/approot:/' + MS.file + ':/content', {
+      method: 'PUT', headers: headers, body: body,
+    });
+    if(res.status === 412 || res.status === 409){
+      /* the file changed since this device last read it. With one device this
+         should never fire; if it does, say so rather than overwrite. */
+      conflictPending = true;
+      SYNC.busy = false; setStatus('warn', 'OneDrive copy changed \u2014 open menu');
+      render();
+      return false;
     }
-    const rev = newRev();
-    const payload = { __ledger: 1, v: 6, rev, order: TABS, lists: data };
-    const body = { files: { [SYNC.fileName]: { content: JSON.stringify(payload, null, 2) } } };
-    const res = await ghFetch('/gists/' + SYNC.gist, { method:'PATCH', body: JSON.stringify(body) });
     if(!res.ok) throw new Error('HTTP ' + res.status);
-    setRev(rev);
+    const m = await res.json();
+    setCtag(m.cTag || m.eTag || null);
     setDirty(false);
     conflictPending = false;
-    SYNC.busy = false; setStatus('on', 'Saved to cloud');
+    SYNC.busy = false; setStatus('on', 'Saved to OneDrive');
+    dailyBackup(body);
     return true;
   }catch(e){
-    SYNC.busy = false; setStatus('err', 'Push failed');
+    SYNC.busy = false;
+    setStatus('err', e.message === 'signed-out' ? 'Sign in again' : 'Could not save to OneDrive');
     return false;
+  }
+}
+
+/* One dated copy per day, first write of that day, never pruned. This is the
+   one that answers "I deleted something last Tuesday". */
+async function dailyBackup(body){
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  const day = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  let last = '';
+  try{ last = localStorage.getItem(BDAYKEY) || ''; }catch(e){}
+  if(last === day) return;
+  const path = '/me/drive/special/approot:/backups/ledger-' + day + '.json:/content';
+  try{
+    let res = await gr(path, { method:'PUT', headers:{ 'Content-Type':'application/json' }, body: body });
+    if(res.status === 404){
+      /* the folder is created on first use; some tenants will not make it
+         implicitly, so ask for it and write once more */
+      await gr('/me/drive/special/approot/children', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'backups', folder: {}, '@microsoft.graph.conflictBehavior': 'replace' }),
+      });
+      res = await gr(path, { method:'PUT', headers:{ 'Content-Type':'application/json' }, body: body });
+    }
+    if(res.ok){ try{ localStorage.setItem(BDAYKEY, day); }catch(e){} }
+  }catch(e){}
+}
+
+/* ---------- restore from OneDrive ---------- */
+const cloudSheet = document.getElementById('cloudSheet');
+const cloudList  = document.getElementById('cloudList');
+const cloudMsg   = document.getElementById('cloudMsg');
+let armedRestore = null;
+
+function closeCloudSheet(){ cloudSheet.classList.remove('up'); armedRestore = null; }
+
+async function openCloudSheet(){
+  armedRestore = null;
+  cloudList.innerHTML = '';
+  cloudMsg.className = 'syncmsg';
+  cloudMsg.textContent = 'Reading OneDrive\u2026';
+  cloudSheet.classList.add('up'); scrim.classList.add('up');
+  const files = [];
+  try{
+    const live = await gr('/me/drive/special/approot:/' + MS.file + '?$select=name,size,lastModifiedDateTime');
+    if(live.ok){ const j = await live.json(); files.push({ path: MS.file, label: 'Current copy', when: j.lastModifiedDateTime, size: j.size }); }
+    const kids = await gr('/me/drive/special/approot:/backups:/children?$top=200&$select=name,size,lastModifiedDateTime');
+    if(kids.ok){
+      const j = await kids.json();
+      (j.value || [])
+        .filter(f => /^ledger-\d{4}-\d{2}-\d{2}\.json$/.test(f.name))
+        .sort((a, b) => a.name < b.name ? 1 : -1)
+        .forEach(f => files.push({ path: 'backups/' + f.name, label: f.name.slice(7, 17), when: f.lastModifiedDateTime, size: f.size }));
+    }
+  }catch(e){
+    cloudMsg.classList.add('err');
+    cloudMsg.textContent = e.message === 'signed-out' ? 'Sign in again first.' : 'Could not reach OneDrive.';
+    return;
+  }
+  if(!files.length){
+    cloudMsg.textContent = 'Nothing in OneDrive yet.';
+    return;
+  }
+  cloudMsg.textContent = 'Tap a copy, then tap it again to confirm. Restoring replaces everything on this device.';
+  files.forEach(f => {
+    const b = document.createElement('button');
+    b.className = 'act';
+    const kb = f.size ? Math.max(1, Math.round(f.size / 1024)) + ' KB' : '';
+    b.innerHTML = escapeHtml(f.label) + '<small>' + escapeHtml([shortWhen(f.when), kb].filter(Boolean).join(' \u00b7 ')) + '</small>';
+    b.onclick = () => {
+      if(armedRestore !== f.path){
+        armedRestore = f.path;
+        [...cloudList.children].forEach(c => c.classList.remove('warn'));
+        b.classList.add('warn');
+        b.querySelector('small').textContent = 'Tap again to replace everything here';
+        return;
+      }
+      restoreFromCloud(f.path);
+    };
+    cloudList.appendChild(b);
+  });
+}
+
+function shortWhen(iso){
+  if(!iso) return '';
+  const d = new Date(iso);
+  if(isNaN(d)) return '';
+  const p = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+}
+
+async function restoreFromCloud(path){
+  cloudMsg.className = 'syncmsg';
+  cloudMsg.textContent = 'Restoring\u2026';
+  try{
+    const res = await gr('/me/drive/special/approot:/' + path + ':/content');
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const { lists, order } = parseCloud(await res.text());
+    if(!lists || !Object.keys(lists).length) throw new Error('empty');
+    if(openItem){ openItem = null; closeDetail(); }
+    if(!adoptLists(lists, order)) throw new Error('empty');
+    _save();
+    render();
+    closeCloudSheet(); closeSheet();
+    setStatus('on', 'Restored from OneDrive');
+    /* the restored state is now the truth on this device; send it up so the
+       live copy and the device agree again */
+    setDirty(true);
+    cloudPush(true);
+  }catch(e){
+    cloudMsg.className = 'syncmsg err';
+    cloudMsg.textContent = e.message === 'empty' ? "That file isn't a Ledger backup." : 'Could not restore that copy.';
+    armedRestore = null;
   }
 }
 
 let conflictPending = false;
-/* true when this device has an edit that has not reached the cloud. Kept in
+/* true when this device has an edit that has not reached OneDrive. Kept in
    storage so a reload, a crash or a backgrounded PWA cannot forget it. */
 let dirty = (function(){ try{ return !!localStorage.getItem(DIRTYKEY); }catch(e){ return false; } })();
 
@@ -2422,9 +2682,9 @@ let pushTimer = null;
 function scheduleSync(){
   if(!SYNC.on) return;
   setDirty(true);
-  setStatus('busy', 'Saving…');
+  setStatus('busy', 'Saving\u2026');
   clearTimeout(pushTimer);
-  pushTimer = setTimeout(() => { syncPush(false); }, 1400);
+  pushTimer = setTimeout(() => { cloudPush(false); }, 2000);
 }
 
 /* wrap save() so every change schedules a push */
@@ -2448,17 +2708,20 @@ function openSheet(){
   if(SYNC.on && conflictPending){
     setStatus('warn', 'Cloud changed elsewhere');
     document.getElementById('syncNowSub').textContent =
-      'This device and the cloud both changed. Pull to take the cloud copy, or Push to keep this device.';
+      'This device and OneDrive both changed. Pull to take the OneDrive copy, or Push to keep this device.';
   }else{
-    document.getElementById('syncNowSub').textContent = 'Pull, then push';
+    document.getElementById('syncNowSub').textContent = 'Save this device to OneDrive';
   }
   sheet.classList.add('up'); scrim.classList.add('up');
 }
 function closeSheet(){ sheet.classList.remove('up'); scrim.classList.remove('up'); }
 function openSyncSheet(){
-  document.getElementById('tokenIn').value = SYNC.token;
-  document.getElementById('gistIn').value  = SYNC.gist;
-  syncMsgEl.className = 'syncmsg'; syncMsgEl.textContent = '';
+  syncMsgEl.className = 'syncmsg';
+  syncMsgEl.textContent = SYNC.on
+    ? ('Signed in as ' + SYNC.who + '. Saved to OneDrive / Apps / ' + (SYNC.folder || 'Ledger') + '.'
+       + (SYNC.folder && SYNC.folder !== 'Ledger' ? ' That folder is not called Ledger, so the app registration was renamed.' : ''))
+    : 'Sign in once and this device keeps a copy of the ledger in your own OneDrive app folder. Nothing else can see it.';
+  document.getElementById('syncSave').style.display   = SYNC.on ? 'none' : '';
   document.getElementById('syncForget').style.display = SYNC.on ? '' : 'none';
   syncSheet.classList.add('up'); scrim.classList.add('up');
 }
@@ -2610,65 +2873,43 @@ document.addEventListener('keydown', e => {
   closeSheet(); closeSyncSheet(); closeTabSheet();
 });
 
-/* sync buttons */
+/* cloud buttons */
 document.getElementById('syncSetup').onclick = openSyncSheet;
 document.getElementById('syncBack').onclick  = closeSyncSheet;
+document.getElementById('restoreCloud').onclick = openCloudSheet;
+document.getElementById('cloudBack').onclick    = closeCloudSheet;
 
 document.getElementById('syncNow').onclick = async () => {
-  // pull then push is always safe: we adopt cloud first, so no clobber
-  const ok = await syncPull();
-  if(ok) await syncPush(false);
+  const ok = await cloudPush(false);
+  if(ok) render();
 };
 document.getElementById('pushBtn').onclick = async () => {
-  // explicit push is a deliberate "this device wins" — force past the guard
-  const ok = await syncPush(true);
+  // explicit push is a deliberate "this device wins" - write past the guard
+  const ok = await cloudPush(true);
   if(ok){ conflictPending = false; render(); }
 };
 document.getElementById('pullBtn').onclick = async () => {
-  const ok = await syncPull();
+  const ok = await cloudPull();
   if(ok){ conflictPending = false; setDirty(false); render(); }
 };
 
 document.getElementById('syncSave').onclick = async () => {
-  const token = document.getElementById('tokenIn').value.trim();
-  const gist  = document.getElementById('gistIn').value.trim();
   syncMsgEl.className = 'syncmsg';
-  if(!token || !gist){ syncMsgEl.classList.add('err'); syncMsgEl.textContent = 'Both fields are required.'; return; }
-  syncMsgEl.textContent = 'Checking…';
-  // temporarily store so ghFetch can use them, roll back on failure
-  const prevT = SYNC.token, prevG = SYNC.gist;
-  localStorage.setItem(SYNC.tokenKey, token);
-  localStorage.setItem(SYNC.gistKey, gist);
-  try{
-    const res = await ghFetch('/gists/' + gist, { method:'GET', cache:'no-store' });
-    if(res.status === 401 || res.status === 403){ throw new Error('bad-token'); }
-    if(res.status === 404){ throw new Error('bad-gist'); }
-    if(!res.ok){ throw new Error('http'); }
-    // adopt the current cloud rev as our baseline so the guard has a reference
-    try{ const c = await fetchCloud(); setRev(c.rev); }catch(e){}
-    syncMsgEl.classList.add('ok');
-    syncMsgEl.textContent = 'Connected. Use Push on the device that already has your items, Pull on the other.';
-    reflectSyncButtons();
-    document.getElementById('syncForget').style.display = '';
-  }catch(e){
-    localStorage.setItem(SYNC.tokenKey, prevT);
-    localStorage.setItem(SYNC.gistKey, prevG);
-    syncMsgEl.classList.add('err');
-    syncMsgEl.textContent =
-      e.message === 'bad-token' ? 'Token rejected. Check it has the gist scope.' :
-      e.message === 'bad-gist'  ? 'Gist not found. Check the ID.' :
-      'Could not connect. Check your connection and try again.';
+  syncMsgEl.textContent = 'Opening Microsoft sign-in\u2026';
+  try{ await msSignIn(); }
+  catch(e){
+    syncMsgEl.className = 'syncmsg err';
+    syncMsgEl.textContent = 'Could not start sign-in.';
   }
 };
 
 document.getElementById('syncForget').onclick = () => {
-  localStorage.removeItem(SYNC.tokenKey);
-  localStorage.removeItem(SYNC.gistKey);
+  writeAuth(null);
+  setCtag(null);
   reflectSyncButtons();
   syncMsgEl.className = 'syncmsg';
-  syncMsgEl.textContent = 'Disconnected on this device.';
-  document.getElementById('tokenIn').value = '';
-  document.getElementById('gistIn').value = '';
+  syncMsgEl.textContent = 'Signed out on this device. Your OneDrive copy is untouched.';
+  document.getElementById('syncSave').style.display = '';
 };
 
 document.getElementById('exp').onclick = () => {
@@ -2717,20 +2958,33 @@ if(loadClean) _save();
 render();
 reflectSyncButtons();
 
-/* pull once on open so this device starts from the cloud copy */
-if(SYNC.on){
-  /* an edit this device never managed to push outranks the cloud copy: send it
-     up (conflict-guarded) instead of pulling straight over the top of it */
-  if(dirty) syncPush(false); else syncPull();
-  /* when returning to the app after it was backgrounded:
-     - if we have an unpushed edit, push it (conflict-guarded) instead of
-       pulling, so we never silently discard local work
-     - otherwise pull, so a device left open refreshes before you touch it */
-  document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState !== 'visible' || SYNC.busy) return;
-    if(dirty) syncPush(false); else syncPull();
-  });
-}
+/* Finish a sign-in if we have just come back from one, then reconcile with
+   OneDrive: an edit this device never managed to push outranks the cloud copy,
+   so send it up instead of pulling straight over the top of it. */
+(async () => {
+  const justSignedIn = await msHandleRedirect();
+  reflectSyncButtons();
+  if(!SYNC.on) return;
+  if(justSignedIn){
+    /* first sign-in on a wiped browser: take whatever is up there. On a device
+       that already holds the ledger, dirty decides and nothing is lost. */
+    if(dirty) await cloudPush(false); else await cloudPull();
+    openSyncSheet();
+  }else{
+    if(dirty) cloudPush(false); else cloudPull();
+  }
+})();
+
+document.addEventListener('visibilitychange', () => {
+  if(!SYNC.on || SYNC.busy) return;
+  if(document.visibilityState === 'hidden'){
+    /* leaving the app is the last safe moment to save an edit still on the
+       debounce */
+    if(dirty){ clearTimeout(pushTimer); cloudPush(false); }
+    return;
+  }
+  if(dirty) cloudPush(false); else cloudPull();
+});
 
 /* ---------- updates ---------- */
 let swReg = null;
