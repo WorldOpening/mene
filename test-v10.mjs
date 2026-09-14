@@ -1,7 +1,7 @@
 import { JSDOM, VirtualConsole } from 'jsdom';
 import fs from 'fs';
 import { webcrypto } from 'crypto';
-const html = fs.readFileSync('/home/claude/repo/index.html', 'utf8');
+const html = fs.readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 let pass = 0, fail = 0;
 const ok = (n, c) => { c ? pass++ : (fail++, console.log('FAIL: ' + n)); };
 
