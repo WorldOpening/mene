@@ -389,6 +389,96 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 .syncmsg.err{color:#C08A7E}
 .syncmsg.ok{color:var(--gold)}
 
+/* ---------- long-term projects ---------- */
+.mastbtn{
+  background:none;border:none;color:var(--dim);cursor:pointer;
+  padding:0.35rem 0.15rem;margin-right:0.85rem;
+  display:flex;align-items:center;gap:0.4rem;
+  transition:color .3s ease;
+}
+.mastbtn svg{width:15px;height:15px;display:block}
+.mastbtn .ln{
+  font-size:0.6rem;letter-spacing:0.18em;color:var(--muted);
+  font-variant-numeric:tabular-nums;
+}
+.mastbtn:active,.mastbtn:hover{color:var(--gold)}
+.mastbtn:active .ln,.mastbtn:hover .ln{color:var(--gold)}
+
+.item.lt{opacity:0.72}
+.item.lt .box{border-radius:50%}
+.item.lt .txt{color:var(--ink)}
+.item.lt:hover{opacity:1}
+.meta .nxt{
+  color:var(--muted);overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;max-width:22ch;
+}
+.meta .nxt::before{content:'\2192\00a0';color:var(--dim)}
+.tierrule.longterm span{color:var(--gold);opacity:0.7}
+
+#proj{z-index:58}
+.projbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:2.5rem}
+.pcard{
+  padding:1.15rem var(--gut);
+  border-bottom:1px solid var(--hair);
+  cursor:pointer;
+  animation:in .4s cubic-bezier(.2,.7,.2,1) both;
+  transition:background .3s ease;
+}
+.pcard:hover{background:rgba(187,163,125,0.035)}
+.pcard.shut{opacity:0.5}
+.pcard .ptxt{cursor:pointer}
+.pnext{
+  margin-top:0.42rem;font-size:0.78rem;line-height:1.45;
+  color:var(--muted);letter-spacing:0.012em;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.pnext em{color:var(--dim);font-style:italic}
+.pbar{
+  margin-top:0.8rem;height:1px;width:100%;
+  background:var(--hair);position:relative;overflow:hidden;
+}
+.pbar i{
+  display:block;height:1px;background:var(--gold);opacity:0.75;
+  transition:width .4s cubic-bezier(.2,.7,.2,1);
+}
+.projadd{padding:1.6rem var(--gut) 0}
+.projadd .compose{width:100%}
+
+.pmeter{
+  padding:0.2rem var(--gut) 0;
+  display:flex;align-items:center;gap:0.8rem;
+  font-size:0.55rem;text-transform:uppercase;letter-spacing:0.2em;
+  color:var(--dim);font-variant-numeric:tabular-nums;
+}
+.pmeter .pbar{margin-top:0;flex:1}
+
+.step{
+  display:flex;align-items:flex-start;gap:0.9rem;
+  padding:0.72rem var(--gut);
+  border-bottom:1px solid var(--hair);
+}
+.step:first-of-type{border-top:1px solid var(--hair)}
+.step.kid{padding-left:calc(var(--gut) + 1.85rem)}
+.step .stin{
+  flex:1;background:none;border:none;outline:none;
+  font-family:'Jost',sans-serif;font-weight:300;
+  font-size:0.9rem;line-height:1.4;color:var(--ink);
+  letter-spacing:0.012em;padding:0;min-width:0;
+}
+.step.kid .stin{font-size:0.84rem;color:var(--muted)}
+.step .stin::placeholder{color:var(--dim)}
+.step.done .stin{color:var(--dim);text-decoration:line-through;text-decoration-color:var(--rule)}
+.step .sbtn{
+  background:none;border:none;color:var(--dim);cursor:pointer;
+  font-size:1rem;line-height:1;padding:0.1rem 0.25rem;
+  transition:color .3s ease;
+}
+.step .sbtn:active,.step .sbtn:hover{color:var(--gold)}
+.step .sfrac{
+  font-size:0.55rem;letter-spacing:0.16em;color:var(--dim);
+  font-variant-numeric:tabular-nums;padding-top:0.28rem;
+}
+
 /* ---------- detail view / pipeline (shared shell) ---------- */
 .detail{
   position:fixed;inset:0;z-index:60;
@@ -702,6 +792,13 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
     </svg>
     <div class="brand">Ledger</div>
     <div class="count" id="count"></div>
+    <button class="mastbtn" id="projBtn" aria-label="Long-term projects">
+      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        <rect x="1" y="2.5" width="14" height="11" stroke="currentColor" stroke-width="1"/>
+        <path d="M6 2.5 V13.5 M10 2.5 V13.5" stroke="currentColor" stroke-width="1"/>
+        <path d="M2.6 5.2 H4.4 M7.6 5.2 H8.4 M11.6 5.2 H13.4" stroke="#BBA37D" stroke-width="1"/>
+      </svg><span class="ln" id="projCount"></span>
+    </button>
     <button class="menu" id="menu" aria-label="Open menu"><span></span><span></span><span></span></button>
   </div>
 </header>
@@ -728,6 +825,8 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 
     <div class="synced" id="syncStatus"></div>
     <div class="syncmsg" id="storeMsg" style="margin-top:0"></div>
+
+    <button class="act" id="projMenuBtn">Long term<span class="badge" id="projBadge"></span><small>Projects that run for months, with their own steps</small></button>
 
     <button class="act" id="pipeBtn">Pipeline<span class="badge" id="pipeBadge"></span><small>Everything you are waiting on, across every panel</small></button>
 
@@ -809,8 +908,36 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   <div class="dbody" id="dbody"><!-- filled per item --></div>
 </div>
 
+<!-- ---------- long-term board ---------- -->
+<div class="detail" id="proj">
+  <div class="dhead">
+    <div class="wrap">
+      <button class="back" id="projBack" aria-label="Back to panels">
+        <svg viewBox="0 0 6 10" fill="none"><path d="M5 1 L1 5 L5 9" stroke="currentColor" stroke-width="1.2"/></svg>
+        <span>Panels</span>
+      </button>
+      <div class="dtabname" id="projHeadCount"></div>
+    </div>
+  </div>
+  <div class="projbody" id="projbody"></div>
+</div>
+
+<!-- ---------- one project ---------- -->
+<div class="detail" id="pdet">
+  <div class="dhead">
+    <div class="wrap">
+      <button class="back" id="pdBack" aria-label="Back">
+        <svg viewBox="0 0 6 10" fill="none"><path d="M5 1 L1 5 L5 9" stroke="currentColor" stroke-width="1.2"/></svg>
+        <span id="pdBackLabel">Long term</span>
+      </button>
+      <div class="dtabname" id="pdTabname"></div>
+    </div>
+  </div>
+  <div class="dbody" id="pdbody"></div>
+</div>
+
 <script>
-const APP_VERSION = 'v7';
+const APP_VERSION = 'v8';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -860,11 +987,12 @@ function loadUI(){
     if(saved && typeof saved === 'object'){
       return {
         waitOpen: (saved.waitOpen && typeof saved.waitOpen === 'object') ? saved.waitOpen : {},
+        ltOpen:   (saved.ltOpen   && typeof saved.ltOpen   === 'object') ? saved.ltOpen   : {},
         pipeSort: saved.pipeSort === 'panel' ? 'panel' : 'age',
       };
     }
   }catch(e){}
-  return { waitOpen:{}, pipeSort:'age' };
+  return { waitOpen:{}, ltOpen:{}, pipeSort:'age' };
 }
 
 /* Load every panel present in storage, not just the known tabs, so nothing
@@ -919,6 +1047,20 @@ function normalize(it){
           ? o.subs.map(s => (s && typeof s === 'object')
               ? Object.assign({}, s, {t: typeof s.t === 'string' ? s.t : '', done: !!s.done})
               : {t: String(s == null ? '' : s), done:false})
+          : [];
+  o.lt    = !!o.lt;
+  o.steps = Array.isArray(o.steps)
+          ? o.steps.map(s => (s && typeof s === 'object')
+              ? Object.assign({}, s, {
+                  t: typeof s.t === 'string' ? s.t : '',
+                  done: !!s.done,
+                  subs: Array.isArray(s.subs)
+                      ? s.subs.map(k => (k && typeof k === 'object')
+                          ? Object.assign({}, k, {t: typeof k.t === 'string' ? k.t : '', done: !!k.done})
+                          : {t: String(k == null ? '' : k), done:false})
+                      : []
+                })
+              : {t: String(s == null ? '' : s), done:false, subs:[]})
           : [];
   o.since  = typeof o.since  === 'number' ? o.since  : null;
   o.nudged = typeof o.nudged === 'number' ? o.nudged : null;
@@ -982,12 +1124,60 @@ function adoptLists(lists, order){
   return true;
 }
 
-function openCount(tab){ return (data[tab]||[]).filter(i => !i.done && !i.wait).length; }
-function waitCount(tab){ return (data[tab]||[]).filter(i => i.wait && !i.done).length; }
+function openCount(tab){ return (data[tab]||[]).filter(i => !i.done && !i.wait && !i.lt).length; }
+function waitCount(tab){ return (data[tab]||[]).filter(i => i.wait && !i.done && !i.lt).length; }
 function totalWaiting(){ return TABS.reduce((n,t) => n + waitCount(t), 0); }
 function subFrac(item){
   if(!item.subs.length) return null;
   return item.subs.filter(s => s.done).length + '/' + item.subs.length;
+}
+
+/* ---------- long-term helpers ---------- */
+function isLT(i){ return !!i.lt && !i.done; }
+function ltCount(tab){ return (data[tab]||[]).filter(isLT).length; }
+function totalLT(){ return TABS.reduce((n,t) => n + ltCount(t), 0); }
+function stepList(item){
+  if(!Array.isArray(item.steps)) item.steps = [];
+  return item.steps;
+}
+function kidList(step){
+  if(!Array.isArray(step.subs)) step.subs = [];
+  return step.subs;
+}
+function stepStats(item){
+  const st = stepList(item);
+  return { done: st.filter(s => s.done).length, total: st.length };
+}
+/* the first thing still to do: an unfinished sub-step if there is one, else the step */
+function nextStep(item){
+  const st = stepList(item);
+  for(let i = 0; i < st.length; i++){
+    if(st[i].done) continue;
+    const k = kidList(st[i]).find(x => !x.done);
+    const t = (k ? k.t : st[i].t).trim();
+    if(t) return t;
+  }
+  return '';
+}
+function makeLT(item){
+  item.lt = true;
+  item.done = false;
+  stepList(item);
+  if(!item.steps.length && item.subs.length){
+    item.steps = item.subs.map(s => ({t: s.t, done: !!s.done, subs: []}));
+    item.subs = [];
+  }
+}
+/* going back to a quick item keeps every line: nesting is flattened, nothing dropped */
+function unmakeLT(item){
+  const flat = [];
+  stepList(item).forEach(s => {
+    flat.push({t: s.t, done: !!s.done});
+    kidList(s).forEach(k => flat.push({t: k.t, done: !!k.done}));
+  });
+  item.subs = item.subs.concat(flat.filter(x => x.t.trim()));
+  item.steps = [];
+  item.lt = false;
 }
 
 /* ---------- waiting helpers ---------- */
@@ -1040,7 +1230,8 @@ function toggleWait(item){
 
 function itemRow(tab, item){
   const row = document.createElement('div');
-  row.className = 'item' + (item.done ? ' done' : '') + (item.wait && !item.done ? ' waiting' : '');
+  row.className = 'item' + (item.done ? ' done' : '') + (item.wait && !item.done ? ' waiting' : '')
+                + (isLT(item) ? ' lt' : '');
 
   const box = document.createElement('button');
   box.className = 'box';
@@ -1054,7 +1245,7 @@ function itemRow(tab, item){
 
   const body = document.createElement('div');
   body.className = 'body';
-  body.onclick = () => openDetail(tab, item);
+  body.onclick = () => isLT(item) ? openProject(tab, item, false) : openDetail(tab, item);
 
   const txt = document.createElement('div');
   txt.className = 'txt';
@@ -1062,9 +1253,12 @@ function itemRow(tab, item){
   body.appendChild(txt);
 
   /* markers: waiting, notes, sub-item progress */
-  const frac = subFrac(item);
+  const lt = isLT(item);
+  const st = lt ? stepStats(item) : null;
+  const frac = lt ? (st.total ? st.done + '/' + st.total : null) : subFrac(item);
+  const nxt  = lt ? nextStep(item) : '';
   const showWait = item.wait && !item.done;
-  if(showWait || item.notes.trim() || frac){
+  if(showWait || nxt || item.notes.trim() || frac){
     const meta = document.createElement('div');
     meta.className = 'meta';
     if(showWait){
@@ -1073,7 +1267,13 @@ function itemRow(tab, item){
       w.textContent = (item.who.trim() ? item.who.trim() : 'waiting') + ' · ' + shortAge(item.since);
       meta.appendChild(w);
     }
-    if(item.notes.trim()){
+    if(nxt){
+      const nx = document.createElement('span');
+      nx.className = 'nxt';
+      nx.textContent = nxt;
+      meta.appendChild(nx);
+    }
+    if(item.notes.trim() && !nxt){
       const dot = document.createElement('span');
       dot.className = 'dot';
       dot.title = 'Has notes';
@@ -1128,9 +1328,10 @@ function listInto(host, tab){
   const items = data[tab];
   if(!items.length){ host.appendChild(emptyBlock(tab)); return; }
 
-  const activeItems = items.filter(i => !i.done && !i.wait);
-  const waiting     = items.filter(i => !i.done && i.wait)
+  const activeItems = items.filter(i => !i.done && !i.wait && !i.lt);
+  const waiting     = items.filter(i => !i.done && i.wait && !i.lt)
                            .sort((a,b) => (a.since || 0) - (b.since || 0));
+  const longterm    = items.filter(i => !i.done && i.lt);
   const doneItems   = items.filter(i => i.done);
 
   activeItems.forEach(i => host.appendChild(itemRow(tab, i)));
@@ -1142,8 +1343,36 @@ function listInto(host, tab){
     if(open) waiting.forEach(i => host.appendChild(itemRow(tab, i)));
   }
 
+  if(longterm.length){
+    const open = ltOpenFor(tab);
+    host.appendChild(ltRule(tab, longterm.length, open));
+    if(open) longterm.forEach(i => host.appendChild(itemRow(tab, i)));
+  }
+
   doneItems.forEach(i => host.appendChild(itemRow(tab, i)));
   if(doneItems.length) host.appendChild(sweepBtn(tab));
+}
+
+/* long-term group sits under the quick items and folds the same way */
+function ltOpenFor(tab){
+  return UI.ltOpen[tab] === true;
+}
+function ltRule(tab, n, open){
+  const b = document.createElement('button');
+  b.className = 'tierrule longterm' + (open ? '' : ' shut');
+  b.setAttribute('aria-expanded', open ? 'true' : 'false');
+  const label = document.createElement('span');
+  label.textContent = 'Long term';
+  const num = document.createElement('span');
+  num.className = 'tn';
+  num.textContent = String(n);
+  const line = document.createElement('span');
+  line.className = 'tl';
+  const wedge = document.createElement('span');
+  wedge.className = 'tw';
+  b.append(label, num, line, wedge);
+  b.onclick = () => { UI.ltOpen[tab] = !open; saveUI(); render(); };
+  return b;
 }
 
 /* faint labelled divider introducing the waiting group; tapping folds it away */
@@ -1289,8 +1518,13 @@ function render(){
   }
   refocus = null;
   document.getElementById('pipeBadge').textContent = totalWaiting() || '';
+  const lt = totalLT();
+  document.getElementById('projBadge').textContent = lt || '';
+  document.getElementById('projCount').textContent = lt || '';
   /* keep an open detail view in sync */
   if(openItem) renderDetail();
+  if(openProj) renderProject();
+  if(proj.classList.contains('up')) renderProjects();
 }
 
 /* ---------- narrow compose ---------- */
@@ -1469,6 +1703,17 @@ function renderDetail(){
   };
   tools.appendChild(waitBtn);
 
+  const ltBtn = document.createElement('button');
+  ltBtn.textContent = 'Make this a long-term project';
+  ltBtn.onclick = () => {
+    makeLT(item);
+    save();
+    const tab = openTab, it = item;
+    closeDetail();
+    openProject(tab, it, false);
+  };
+  tools.appendChild(ltBtn);
+
   /* move to another panel */
   if(TABS.length > 1){
     const nextUp = TABS[(TABS.indexOf(openTab) + 1) % TABS.length];
@@ -1630,6 +1875,392 @@ sortAgeBtn.onclick   = () => { UI.pipeSort = 'age';   saveUI(); renderPipe(); };
 sortPanelBtn.onclick = () => { UI.pipeSort = 'panel'; saveUI(); renderPipe(); };
 document.getElementById('pipeBack').onclick = closePipe;
 document.getElementById('pipeBtn').onclick  = openPipe;
+
+/* ---------- long term: the board and one project ---------- */
+const proj      = document.getElementById('proj');
+const projbody  = document.getElementById('projbody');
+const pdet      = document.getElementById('pdet');
+const pdbody    = document.getElementById('pdbody');
+const pdTabname = document.getElementById('pdTabname');
+
+let openProj = null;
+let openProjTab = null;
+let projFromBoard = false;
+
+function projectsEverywhere(){
+  const live = [], closed = [];
+  TABS.forEach(tab => {
+    (data[tab] || []).forEach(item => {
+      if(!item.lt) return;
+      (item.done ? closed : live).push({tab, item});
+    });
+  });
+  return {live, closed};
+}
+
+function openProjects(){
+  closeSheet();
+  renderProjects();
+  proj.classList.add('up');
+  scrim.classList.add('up');
+  projbody.scrollTop = 0;
+}
+function closeProjects(){
+  proj.classList.remove('up');
+  scrim.classList.remove('up');
+}
+
+function renderProjects(){
+  const {live, closed} = projectsEverywhere();
+  document.getElementById('projHeadCount').textContent = live.length ? String(live.length) : '';
+  projbody.innerHTML = '';
+
+  if(!live.length && !closed.length){
+    const d = document.createElement('div');
+    d.className = 'empty';
+    d.innerHTML = '<div class="line"></div><p>No long-term projects yet.</p>' +
+                  '<span>Start one below, or open any item and make it long term</span>';
+    projbody.appendChild(d);
+  }else{
+    live.forEach(r => projbody.appendChild(projectCard(r.tab, r.item)));
+    if(closed.length){
+      const g = document.createElement('div');
+      g.className = 'pgroup';
+      const nm = document.createElement('span'); nm.textContent = 'Finished';
+      g.appendChild(nm);
+      projbody.appendChild(g);
+      closed.forEach(r => projbody.appendChild(projectCard(r.tab, r.item)));
+    }
+  }
+
+  /* start one straight from the board, on whichever panel is in front */
+  const addWrap = document.createElement('div');
+  addWrap.className = 'projadd';
+  const comp = document.createElement('div');
+  comp.className = 'compose';
+  comp.innerHTML = '<svg class="wedge" viewBox="0 0 6 14" aria-hidden="true"><path d="M0 0 L6 0 L3 14 Z" fill="#BBA37D"/></svg>';
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.placeholder = 'Start a project on ' + active;
+  inp.autocomplete = 'off';
+  inp.setAttribute('enterkeyhint','done');
+  inp.addEventListener('keydown', e => {
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    const v = inp.value.trim();
+    if(!v) return;
+    const item = normalize({t: v});
+    makeLT(item);
+    data[active].unshift(item);
+    save(); render(); renderProjects();
+    openProject(active, item, true);
+  });
+  comp.appendChild(inp);
+  addWrap.appendChild(comp);
+  projbody.appendChild(addWrap);
+}
+
+function projectCard(tab, item){
+  const card = document.createElement('div');
+  card.className = 'pcard' + (item.done ? ' shut' : '');
+  card.onclick = () => openProject(tab, item, true);
+
+  const top = document.createElement('div');
+  top.className = 'ptop';
+  const p = document.createElement('span');
+  p.className = 'ppanel';
+  p.textContent = tab;
+  top.appendChild(p);
+  const st = stepStats(item);
+  const fr = document.createElement('span');
+  fr.className = 'page';
+  fr.textContent = st.total ? st.done + '/' + st.total : 'no steps yet';
+  top.appendChild(fr);
+  card.appendChild(top);
+
+  const txt = document.createElement('div');
+  txt.className = 'ptxt';
+  txt.textContent = item.t;
+  card.appendChild(txt);
+
+  if(!item.done){
+    const nx = document.createElement('div');
+    nx.className = 'pnext';
+    const t = nextStep(item);
+    if(t) nx.textContent = 'Next: ' + t;
+    else nx.innerHTML = '<em>nothing queued</em>';
+    card.appendChild(nx);
+  }
+
+  const bar = document.createElement('div');
+  bar.className = 'pbar';
+  const fill = document.createElement('i');
+  fill.style.width = (st.total ? Math.round(100 * st.done / st.total) : 0) + '%';
+  bar.appendChild(fill);
+  card.appendChild(bar);
+
+  return card;
+}
+
+function openProject(tab, item, fromBoard){
+  openProjTab = tab;
+  openProj = item;
+  projFromBoard = !!fromBoard;
+  document.getElementById('pdBackLabel').textContent = projFromBoard ? 'Long term' : 'Panels';
+  renderProject();
+  pdet.classList.add('up');
+  scrim.classList.add('up');
+  pdbody.scrollTop = 0;
+}
+function closeProject(){
+  pdet.classList.remove('up');
+  openProj = null;
+  openProjTab = null;
+  if(projFromBoard){
+    projFromBoard = false;
+    renderProjects();
+  }else{
+    scrim.classList.remove('up');
+  }
+  render();
+}
+
+function renderProject(focusSel){
+  if(!openProj) return;
+  const item = openProj;
+  pdTabname.textContent = openProjTab;
+  pdet.classList.toggle('done-item', item.done);
+  pdbody.innerHTML = '';
+
+  /* title */
+  const title = document.createElement('div');
+  title.className = 'dtitle';
+  const box = document.createElement('button');
+  box.className = 'box';
+  box.onclick = () => {
+    item.done = !item.done;
+    if(item.done) setWait(item, false);
+    save(); renderProject(); render();
+  };
+  const tarea = document.createElement('textarea');
+  tarea.className = 'dtitle-txt';
+  tarea.rows = 1;
+  tarea.value = item.t;
+  tarea.setAttribute('enterkeyhint','done');
+  tarea.addEventListener('input', () => { item.t = tarea.value; autogrow(tarea); save(); });
+  tarea.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); tarea.blur(); } });
+  title.append(box, tarea);
+  pdbody.appendChild(title);
+
+  /* progress */
+  const st = stepStats(item);
+  const meter = document.createElement('div');
+  meter.className = 'pmeter';
+  const mtxt = document.createElement('span');
+  mtxt.textContent = st.total ? st.done + ' of ' + st.total : 'no steps yet';
+  const mbar = document.createElement('div');
+  mbar.className = 'pbar';
+  const mfill = document.createElement('i');
+  mfill.style.width = (st.total ? Math.round(100 * st.done / st.total) : 0) + '%';
+  mbar.appendChild(mfill);
+  meter.append(mtxt, mbar);
+  pdbody.appendChild(meter);
+
+  /* waiting, when the whole project is blocked on someone */
+  if(item.wait && !item.done){
+    const wlabel = document.createElement('div');
+    wlabel.className = 'dlabel';
+    const wl = document.createElement('span'); wl.textContent = 'Waiting on';
+    const ag = document.createElement('span');
+    ag.className = 'age' + (isStale(item) ? ' stale' : '');
+    ag.textContent = ageText(item.since) === 'today' ? 'since today' : ageText(item.since);
+    wlabel.append(wl, ag);
+    pdbody.appendChild(wlabel);
+
+    const wbox = document.createElement('div');
+    wbox.className = 'waitbox';
+    const who = document.createElement('input');
+    who.className = 'whoin';
+    who.type = 'text';
+    who.placeholder = 'Who or what you are waiting on';
+    who.value = item.who;
+    who.autocomplete = 'off';
+    who.setAttribute('enterkeyhint','done');
+    who.addEventListener('input', () => { item.who = who.value; save(); });
+    who.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); who.blur(); } });
+    wbox.appendChild(who);
+    pdbody.appendChild(wbox);
+  }
+
+  /* notes */
+  const nlabel = document.createElement('div');
+  nlabel.className = 'dlabel';
+  const nl = document.createElement('span'); nl.textContent = 'Notes';
+  nlabel.appendChild(nl);
+  pdbody.appendChild(nlabel);
+  const notes = document.createElement('textarea');
+  notes.className = 'notes';
+  notes.placeholder = 'Thinking, context, links, what this is really for...';
+  notes.value = item.notes;
+  notes.addEventListener('input', () => { item.notes = notes.value; autogrow(notes); save(); });
+  pdbody.appendChild(notes);
+
+  /* steps */
+  const slabel = document.createElement('div');
+  slabel.className = 'dlabel';
+  const sl = document.createElement('span'); sl.textContent = 'Steps';
+  slabel.appendChild(sl);
+  pdbody.appendChild(slabel);
+
+  stepList(item).forEach((s, i) => {
+    pdbody.appendChild(stepRow(item, s, i, null, -1));
+    kidList(s).forEach((k, j) => pdbody.appendChild(stepRow(item, k, j, s, i)));
+  });
+
+  const addRow = document.createElement('div');
+  addRow.className = 'subadd';
+  const plus = document.createElement('div'); plus.className = 'plus';
+  const sinp = document.createElement('input');
+  sinp.type = 'text';
+  sinp.placeholder = 'Add a step';
+  sinp.autocomplete = 'off';
+  sinp.setAttribute('enterkeyhint','done');
+  sinp.addEventListener('keydown', e => {
+    if(e.key !== 'Enter') return;
+    e.preventDefault();
+    const v = sinp.value.trim();
+    if(!v) return;
+    stepList(item).push({t: v, done: false, subs: []});
+    save(); renderProject();
+    const again = pdbody.querySelector('.subadd input');
+    if(again) again.focus();
+    render();
+  });
+  addRow.append(plus, sinp);
+  pdbody.appendChild(addRow);
+
+  /* tools */
+  const tools = document.createElement('div');
+  tools.className = 'dtools';
+
+  const waitBtn = document.createElement('button');
+  waitBtn.textContent = item.wait ? 'Stop waiting on someone else' : 'Mark as waiting on someone else';
+  waitBtn.onclick = () => { setWait(item, !item.wait); save(); renderProject(); render(); };
+  tools.appendChild(waitBtn);
+
+  if(TABS.length > 1){
+    const i = TABS.indexOf(openProjTab);
+    const nextTab = TABS[(i + 1) % TABS.length];
+    const moveBtn = document.createElement('button');
+    moveBtn.textContent = 'Move to ' + nextTab;
+    moveBtn.onclick = () => {
+      if(!Array.isArray(data[openProjTab])){ closeProject(); return; }
+      data[openProjTab] = data[openProjTab].filter(x => x !== item);
+      data[nextTab].unshift(item);
+      openProjTab = nextTab;
+      save(); renderProject(); render();
+    };
+    tools.appendChild(moveBtn);
+  }
+
+  const back = document.createElement('button');
+  back.textContent = 'Return this to the quick list';
+  back.onclick = () => {
+    unmakeLT(item);
+    save();
+    const tab = openProjTab, it = item;
+    closeProject();
+    openDetail(tab, it);
+  };
+  tools.appendChild(back);
+
+  const del = document.createElement('button');
+  del.textContent = 'Delete this project';
+  del.onclick = () => {
+    if(!Array.isArray(data[openProjTab])){ closeProject(); return; }
+    data[openProjTab] = data[openProjTab].filter(x => x !== item);
+    save(); closeProject();
+  };
+  tools.appendChild(del);
+  pdbody.appendChild(tools);
+
+  autogrow(tarea);
+  autogrow(notes);
+
+  if(focusSel){
+    const el = pdbody.querySelector(focusSel);
+    if(el) el.focus();
+  }
+}
+
+/* one row: a step, or a sub-step when parent is passed */
+function stepRow(item, s, idx, parent, pidx){
+  const row = document.createElement('div');
+  row.className = 'step' + (parent ? ' kid' : '') + (s.done ? ' done' : '');
+
+  const box = document.createElement('button');
+  box.className = 'subbox';
+  box.onclick = () => { s.done = !s.done; save(); renderProject(); render(); };
+
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'stin';
+  inp.value = s.t;
+  inp.placeholder = parent ? 'Sub-step' : 'Step';
+  inp.autocomplete = 'off';
+  inp.setAttribute('enterkeyhint','done');
+  inp.dataset.step = parent ? (pidx + '.' + idx) : String(idx);
+  inp.addEventListener('input', () => { s.t = inp.value; save(); });
+  inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); inp.blur(); } });
+  inp.addEventListener('blur', () => {
+    /* an empty line left behind is noise: drop it */
+    if(s.t.trim()) return;
+    if(parent) kidList(parent).splice(idx, 1);
+    else stepList(item).splice(idx, 1);
+    save(); renderProject(); render();
+  });
+
+  row.append(box, inp);
+
+  if(!parent){
+    const kids = kidList(s);
+    const done = kids.filter(k => k.done).length;
+    if(kids.length){
+      const fr = document.createElement('span');
+      fr.className = 'sfrac';
+      fr.textContent = done + '/' + kids.length;
+      row.appendChild(fr);
+    }
+    const add = document.createElement('button');
+    add.className = 'sbtn';
+    add.textContent = '+';
+    add.setAttribute('aria-label','Add a sub-step');
+    add.onclick = () => {
+      kids.push({t: '', done: false});
+      save();
+      renderProject('[data-step="' + idx + '.' + (kids.length - 1) + '"]');
+    };
+    row.appendChild(add);
+  }
+
+  const del = document.createElement('button');
+  del.className = 'sbtn';
+  del.textContent = '\u00d7';
+  del.setAttribute('aria-label','Remove');
+  del.onclick = () => {
+    if(parent) kidList(parent).splice(idx, 1);
+    else stepList(item).splice(idx, 1);
+    save(); renderProject(); render();
+  };
+  row.appendChild(del);
+
+  return row;
+}
+
+document.getElementById('projBack').onclick    = closeProjects;
+document.getElementById('pdBack').onclick      = closeProject;
+document.getElementById('projBtn').onclick     = openProjects;
+document.getElementById('projMenuBtn').onclick = openProjects;
 
 /* ========== SYNC ENGINE (private GitHub gist) ========== */
 const REVKEY   = KEY + '.gh.rev';
