@@ -943,7 +943,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v9';
+const APP_VERSION = 'v10';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -2288,7 +2288,16 @@ const AUTHKEY  = KEY + '.ms';        // { rt, at, exp, who, folder }
 const CTAGKEY  = KEY + '.ms.ctag';
 const BDAYKEY  = KEY + '.ms.bday';
 const PKCEKEY  = KEY + '.ms.pkce';
+const STAMPKEY = KEY + '.ms.savedAt';   // when this device last wrote the live copy
 const DIRTYKEY = KEY + '.dirty';
+
+/* The write stamp is what stops a stale OneDrive copy from overwriting live
+   data. A copy with no stamp counts as older than anything stamped. */
+function localSavedAt(){ try{ return +localStorage.getItem(STAMPKEY) || 0; }catch(e){ return 0; } }
+function setSavedAt(t){ try{ t ? localStorage.setItem(STAMPKEY, String(t)) : localStorage.removeItem(STAMPKEY); }catch(e){} }
+function localItemCount(){
+  try{ return TABS.reduce((n, t) => n + ((data[t] || []).length), 0); }catch(e){ return 0; }
+}
 
 function readAuth(){
   try{ return JSON.parse(localStorage.getItem(AUTHKEY) || 'null'); }catch(e){ return null; }
@@ -2481,8 +2490,8 @@ async function msIdentify(){
 /* tolerates the current wrapper, the v5 wrapper, and a bare panels object */
 function parseCloud(text){
   const raw = JSON.parse(text);
-  if(raw && raw.__ledger && raw.lists) return { lists: raw.lists, order: raw.order || null };
-  return { lists: raw, order: null };
+  if(raw && raw.__ledger && raw.lists) return { lists: raw.lists, order: raw.order || null, savedAt: +raw.savedAt || 0 };
+  return { lists: raw, order: null, savedAt: 0 };
 }
 
 async function cloudPull(){
@@ -2491,9 +2500,12 @@ async function cloudPull(){
   try{
     const meta = await gr('/me/drive/special/approot:/' + MS.file);
     if(meta.status === 404){
-      /* nothing up there yet: this device is the source */
+      /* nothing up there yet: this device is the source, so seed it now
+         rather than waiting for the next edit */
       setCtag(null);
-      SYNC.busy = false; setStatus('on', 'No copy in OneDrive yet');
+      SYNC.busy = false;
+      if(localItemCount()) return cloudPush(true);
+      setStatus('on', 'No copy in OneDrive yet');
       return true;
     }
     if(!meta.ok) throw new Error('HTTP ' + meta.status);
@@ -2501,18 +2513,32 @@ async function cloudPull(){
 
     const res = await gr('/me/drive/special/approot:/' + MS.file + ':/content');
     if(!res.ok) throw new Error('HTTP ' + res.status);
-    const { lists, order } = parseCloud(await res.text());
+    const { lists, order, savedAt } = parseCloud(await res.text());
+    setCtag(m.cTag || m.eTag || null);
 
-    if(lists && Object.keys(lists).length){
+    const cloudStamp = +savedAt || 0;
+    const mine       = localSavedAt();
+    const empty      = localItemCount() === 0;
+    const hasCloud   = !!(lists && Object.keys(lists).length);
+
+    /* Take the OneDrive copy only when it is provably newer, or when this
+       device holds nothing to lose. Anything else and the device wins. */
+    if(hasCloud && (empty || cloudStamp > mine)){
       adoptLists(lists, order);
       localStorage.setItem(KEY, JSON.stringify(data));
       localStorage.setItem(TABKEY, JSON.stringify(TABS));
       if(openItem){ openItem = null; closeDetail(); }
+      setSavedAt(cloudStamp);
       render();
       if(pipe.classList.contains('up')) renderPipe();
+      SYNC.busy = false; setStatus('on', 'Up to date');
+      return true;
     }
-    setCtag(m.cTag || m.eTag || null);
-    SYNC.busy = false; setStatus('on', 'Up to date');
+
+    SYNC.busy = false;
+    /* this device is ahead of OneDrive: send it up rather than sit on it */
+    if(!empty && mine > cloudStamp) return cloudPush(false);
+    setStatus('on', 'Up to date');
     return true;
   }catch(e){
     SYNC.busy = false;
@@ -2526,7 +2552,7 @@ async function cloudPush(force){
   if(!SYNC.on) return false;
   SYNC.busy = true; setStatus('busy', 'Saving\u2026');
   try{
-    const payload = { __ledger: 1, v: 6, rev: newRev(), order: TABS, lists: data };
+    const payload = { __ledger: 1, v: 6, rev: newRev(), savedAt: Date.now(), order: TABS, lists: data };
     const body    = JSON.stringify(payload, null, 2);
     const headers = { 'Content-Type': 'application/json' };
     const ct = ctag();
@@ -2546,6 +2572,7 @@ async function cloudPush(force){
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const m = await res.json();
     setCtag(m.cTag || m.eTag || null);
+    setSavedAt(payload.savedAt);
     setDirty(false);
     conflictPending = false;
     SYNC.busy = false; setStatus('on', 'Saved to OneDrive');
