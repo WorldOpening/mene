@@ -110,61 +110,45 @@ header .wrap > .mastbtn, header .wrap > .menu{flex-shrink:0}
   .count .w{display:none}
   .count .waitlink{color:var(--amber)}
 }
-/* ---------- deadlines (Fundamental side) ---------- */
+/* ---------- urgent (Fundamental side) ---------- */
 html:not([data-side="fa"]) .fa-only{display:none !important}
-.due{
+:root{--ember:#D09470}
+.hot{
   flex-shrink:0;align-self:flex-start;
-  display:flex;align-items:center;justify-content:flex-end;gap:0.4rem;
-  min-width:2.4rem;margin:-6px 0 -6px -0.2rem;padding:8px 0 6px 0.6rem;
-  font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;
-  color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;
-  cursor:text;
+  display:flex;align-items:center;justify-content:center;
+  width:2rem;margin:-8px -0.4rem -8px 0;padding:12px 0 10px;
+  background:none;border:none;cursor:pointer;
 }
-.due.soon{color:var(--gold)}
-.due.nodate svg{width:11px;height:11px;opacity:0.26;transition:opacity .3s ease}
-.body:hover .due.nodate svg{opacity:0.55}
-.due input{
-  width:5.4rem;background:none;border:none;outline:none;
-  border-bottom:1px solid var(--rule);color:var(--ink);
-  font-family:'Jost',sans-serif;font-weight:300;font-size:16px;letter-spacing:0.02em;
-  text-transform:none;text-align:right;padding:0 0 1px;
+.hot i{
+  display:block;width:7px;height:7px;transform:rotate(45deg);
+  border:1px solid var(--muted);opacity:0.3;
+  transition:opacity .3s ease,background-color .3s ease,border-color .3s ease;
 }
-.due input::placeholder{color:var(--dim)}
-.due input.bad{border-bottom-color:var(--amber)}
-.due .pv{min-width:2.8rem;text-align:right;color:var(--gold)}
-
-/* the waterfall: every dated item, soonest first, bars running out from today */
-#dues{z-index:58}
-.wfaxis{
-  position:sticky;top:0;z-index:1;background:var(--bg);
-  padding:0.9rem var(--gut) 0.5rem;border-bottom:1px solid var(--hair);
+.body:hover .hot i{opacity:0.6}
+/* an urgent row: an ember rule down the left, a warm wash fading out, warmer ink */
+.item.urgent{
+  background:linear-gradient(90deg,rgba(208,148,112,0.09),rgba(208,148,112,0) 78%);
+  box-shadow:inset 2px 0 0 var(--ember);
 }
-.wfaxis .lane{position:relative;height:0.9rem}
-.wfaxis .tk{
-  position:absolute;top:0;transform:translateX(-50%);white-space:nowrap;
-  font-size:0.52rem;letter-spacing:0.16em;text-transform:uppercase;color:var(--dim);
+.item.urgent .txt{color:#F3E7DC}
+.item.urgent .hot i{background:var(--ember);border-color:var(--ember);opacity:1;animation:ember 3s ease-in-out infinite}
+@keyframes ember{
+  0%,100%{box-shadow:0 0 0 0 rgba(208,148,112,0)}
+  50%{box-shadow:0 0 9px 1px rgba(208,148,112,0.6)}
 }
-.wfaxis .tk.now{transform:none;color:var(--gold)}
-.wf{
-  display:block;width:100%;text-align:left;background:none;border:none;cursor:pointer;
-  padding:0.85rem var(--gut) 0.8rem;border-bottom:1px solid var(--hair);
-  font-family:inherit;color:inherit;
+@media (prefers-reduced-motion:reduce){ .item.urgent .hot i{animation:none} }
+.hotlink{
+  background:none;border:none;cursor:pointer;padding:0;
+  font-family:'Jost',sans-serif;font-weight:400;
+  font-size:0.64rem;letter-spacing:0.22em;text-transform:uppercase;
+  color:var(--ember);
 }
-.wf .top{display:flex;align-items:baseline;gap:0.8rem}
-.wf .t{flex:1;min-width:0;font-size:0.9rem;font-weight:300;line-height:1.4;color:var(--ink);word-break:break-word}
-.wf .d{flex-shrink:0;font-size:0.6rem;letter-spacing:0.12em;text-transform:uppercase;color:var(--muted);font-variant-numeric:tabular-nums}
-.wf.soon .d{color:var(--gold)}
-.wf .p{font-size:0.52rem;letter-spacing:0.18em;text-transform:uppercase;color:var(--dim);margin-top:0.2rem}
-.wf .lane{position:relative;height:9px;margin-top:0.55rem}
-.wf .lane .g{position:absolute;top:0;bottom:0;width:1px;background:var(--hair)}
-.wf .lane .bar{position:absolute;left:0;top:4px;height:1px;background:var(--gold);opacity:0.45}
-.wf .lane .pt{
-  position:absolute;top:1px;width:7px;height:7px;margin-left:-3px;border-radius:50%;
-  background:var(--gold);
+@media (max-width:460px){ html[data-side="fa"] .count .w{display:none} }
+#hot{z-index:58}
+.hotgroup{
+  padding:1.3rem var(--gut) 0.45rem;
+  font-size:0.56rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--dim);
 }
-.wf .lane .pt.past{background:none;border:1px solid var(--muted);margin-left:0}
-.wf .lane .pt.far{border-radius:0;width:0;height:0;background:none;
-  border-top:3.5px solid transparent;border-bottom:3.5px solid transparent;border-left:6px solid var(--gold);margin-left:-6px}
 .tabbtn.mv{width:auto;min-width:2.6rem;padding:0 0.45rem;font-size:0.58rem;letter-spacing:0.16em;text-transform:uppercase}
 .waitlink{
   background:none;border:none;cursor:pointer;
@@ -891,12 +875,6 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
     </button>
     <div class="brand">Ledger</div>
     <div class="count" id="count"></div>
-    <button class="mastbtn fa-only" id="duesBtn" aria-label="Deadlines">
-      <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path d="M3 3.5 H7.5 M5.5 8 H11 M8.5 12.5 H14.5" stroke="currentColor" stroke-width="1"/>
-        <path d="M1.5 1.5 V14.5" stroke="#BBA37D" stroke-width="1"/>
-      </svg>
-    </button>
     <button class="mastbtn" id="projBtn" aria-label="Long-term projects">
       <svg viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <rect x="1" y="2.5" width="14" height="11" stroke="currentColor" stroke-width="1"/>
@@ -933,7 +911,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
     <div class="syncmsg" id="storeMsg" style="margin-top:0"></div>
 
     <button class="act" id="projMenuBtn">Long term<span class="badge" id="projBadge"></span><small>Projects that run for months, with their own steps</small></button>
-    <button class="act fa-only" id="duesMenuBtn">Deadlines<span class="badge" id="duesBadge"></span><small>Everything with a date, soonest first</small></button>
+    <button class="act fa-only" id="hotMenuBtn">Urgent<span class="badge" id="hotBadge"></span><small>What needs you first, across Fundamental</small></button>
 
     <button class="act" id="pipeBtn">Pipeline<span class="badge" id="pipeBadge"></span><small>Everything you are waiting on, across every panel</small></button>
 
@@ -1035,18 +1013,18 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   <div class="projbody" id="projbody"></div>
 </div>
 
-<!-- ---------- deadlines ---------- -->
-<div class="detail" id="dues">
+<!-- ---------- urgent ---------- -->
+<div class="detail" id="hot">
   <div class="dhead">
     <div class="wrap">
-      <button class="back" id="duesBack" aria-label="Back to panels">
+      <button class="back" id="hotBack" aria-label="Back to panels">
         <svg viewBox="0 0 6 10" fill="none"><path d="M5 1 L1 5 L5 9" stroke="currentColor" stroke-width="1.2"/></svg>
         <span>Panels</span>
       </button>
-      <div class="dtabname" id="duesHead"></div>
+      <div class="dtabname" id="hotHead"></div>
     </div>
   </div>
-  <div class="projbody" id="duesbody"></div>
+  <div class="projbody" id="hotbody"></div>
 </div>
 
 <!-- ---------- one project ---------- -->
@@ -1064,7 +1042,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v13';
+const APP_VERSION = 'v14';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -1408,153 +1386,10 @@ function toggleWait(item){
   if(navigator.vibrate) navigator.vibrate(12);
 }
 
-/* ---------- dates: typed in plain words, stored as YYYY-MM-DD ---------- */
-const MON3 = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const DAY3 = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-function p2(n){ return String(n).padStart(2, '0'); }
-function dayStart(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-function isoOf(d){ return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
-function fromISO(s){
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || '');
-  if(!m) return null;
-  const d = new Date(+m[1], +m[2] - 1, +m[3]);
-  return d.getMonth() === +m[2] - 1 ? d : null;
-}
-function daysFrom(now, d){ return Math.round((dayStart(d) - dayStart(now)) / 864e5); }
-
-/* '' clears the date, null means it could not be read.
-   Accepts: today, tomorrow/tmrw, fri, next fri, +5, 5d, 2w, 15 (the next 15th),
-   oct 3, 3 oct, 10/3 (month first unless the first number cannot be a month),
-   with an optional year on any of them. */
-function parseDue(raw, now){
-  now = dayStart(now || new Date());
-  const s = String(raw || '').trim().toLowerCase().replace(/,/g, ' ').replace(/\s+/g, ' ')
-            .replace(/(\d)(st|nd|rd|th)\b/g, '$1');
-  if(!s) return '';
-  const add = n => { const d = new Date(now); d.setDate(d.getDate() + n); return isoOf(d); };
-  const mk = (mo, day, yr) => {
-    if(mo < 0 || mo > 11 || day < 1 || day > 31) return null;
-    let y;
-    if(yr){ y = +yr; if(y < 100) y += 2000; }
-    else{
-      y = now.getFullYear();
-      /* a date well behind us with no year means next year's */
-      const back = new Date(now); back.setDate(back.getDate() - 60);
-      if(new Date(y, mo, day) < back) y += 1;
-    }
-    const d = new Date(y, mo, day);
-    return d.getMonth() === mo ? isoOf(d) : null;
-  };
-  let m;
-  if(s === 'today' || s === 'tod' || s === 'tdy') return add(0);
-  if(/^(tomorrow|tmrw|tmr|tom|tomo|tmw)$/.test(s)) return add(1);
-  if((m = /^\+ ?(\d{1,3})$/.exec(s)) || (m = /^\+? ?(\d{1,3}) ?(?:d|dy|day|days)$/.exec(s))) return add(+m[1]);
-  if((m = /^\+? ?(\d{1,2}) ?(?:w|wk|wks|week|weeks)$/.exec(s))) return add(7 * +m[1]);
-  if((m = /^(next )?(sun|mon|tue|wed|thu|fri|sat)[a-z]*$/.exec(s))){
-    let diff = (DAY3.map(x => x.toLowerCase()).indexOf(m[2]) - now.getDay() + 7) % 7;
-    if(diff === 0) diff = 7;
-    if(m[1]) diff += 7;
-    return add(diff);
-  }
-  const mon = w => w.length >= 3 ? MON3.map(x => x.toLowerCase()).indexOf(w.slice(0, 3)) : -1;
-  if((m = /^([a-z]{3,9})\.? (\d{1,2})(?: (\d{2}|\d{4}))?$/.exec(s)) && mon(m[1]) >= 0) return mk(mon(m[1]), +m[2], m[3]);
-  if((m = /^(\d{1,2}) ([a-z]{3,9})\.?(?: (\d{2}|\d{4}))?$/.exec(s)) && mon(m[2]) >= 0) return mk(mon(m[2]), +m[1], m[3]);
-  if((m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s))) return mk(+m[2] - 1, +m[3], m[1]);
-  if((m = /^(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2}|\d{4}))?$/.exec(s))){
-    let a = +m[1], b = +m[2];
-    if(a > 12 && b <= 12){ const t = a; a = b; b = t; }
-    return mk(a - 1, b, m[3]);
-  }
-  if((m = /^(\d{1,2})$/.exec(s))){
-    const day = +m[1];
-    for(let k = 0; k < 3; k++){
-      const d = new Date(now.getFullYear(), now.getMonth() + k, day);
-      if(d.getDate() === day && d >= now) return isoOf(d);
-    }
-    return null;
-  }
-  return null;
-}
-
-/* short, for the right shoulder of a row. Past dates read like any other. */
-function fmtDue(iso, now){
-  const d = fromISO(iso);
-  if(!d) return '';
-  now = now || new Date();
-  const diff = daysFrom(now, d);
-  if(diff === 0) return 'Today';
-  if(diff === 1) return 'Tmrw';
-  if(diff > 1 && diff < 7) return DAY3[d.getDay()];
-  const base = d.getDate() + ' ' + MON3[d.getMonth()];
-  return d.getFullYear() === dayStart(now).getFullYear() ? base : base + ' ' + String(d.getFullYear()).slice(2);
-}
-function dueSoon(iso){ const d = fromISO(iso); if(!d) return false; const n = daysFrom(new Date(), d); return n === 0 || n === 1; }
-
-const CAL_SVG = '<svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><rect x="1" y="2" width="10" height="9" stroke="currentColor"/><path d="M1 5 H11 M4 0.8 V3 M8 0.8 V3" stroke="currentColor"/></svg>';
-
-function dueSlot(item){
-  const slot = document.createElement('span');
-  let editing = false;
-  function show(){
-    editing = false;
-    slot.className = 'due' + (item.due ? (dueSoon(item.due) ? ' soon' : '') : ' nodate');
-    slot.setAttribute('aria-label', item.due ? 'Due ' + fmtDue(item.due) + ', tap to change' : 'Add a date');
-    slot.innerHTML = item.due ? escapeHtml(fmtDue(item.due)) : CAL_SVG;
-  }
-  function edit(){
-    if(editing) return;
-    editing = true;
-    slot.className = 'due editing';
-    slot.innerHTML = '';
-    const inp = document.createElement('input');
-    inp.type = 'text';
-    inp.autocomplete = 'off';
-    inp.setAttribute('enterkeyhint', 'done');
-    inp.placeholder = 'fri, 10/3, +5';
-    inp.value = item.due ? fmtDue(item.due) : '';
-    const pv = document.createElement('span');
-    pv.className = 'pv';
-    slot.append(inp, pv);
-    let finished = false;
-    const preview = () => {
-      const v = parseDue(inp.value);
-      inp.classList.toggle('bad', v === null && inp.value.trim() !== '');
-      pv.textContent = v ? fmtDue(v) : (inp.value.trim() ? '?' : '');
-    };
-    const finish = (commit) => {
-      if(finished) return true;
-      const v = commit ? parseDue(inp.value) : undefined;
-      if(commit && v === null){ inp.classList.add('bad'); return false; }
-      finished = true;
-      if(commit && v !== (item.due || '')){
-        if(v) item.due = v; else delete item.due;
-        save(); render();
-        if(duesUp()) renderDues();
-        return true;
-      }
-      show();
-      return true;
-    };
-    inp.addEventListener('input', preview);
-    inp.addEventListener('click', e => e.stopPropagation());
-    inp.addEventListener('keydown', e => {
-      if(e.key === 'Enter'){ e.preventDefault(); if(finish(true)) inp.blur(); }
-      else if(e.key === 'Escape'){ e.preventDefault(); finish(false); }
-    });
-    /* leaving the field keeps a good date and quietly drops an unreadable one */
-    inp.addEventListener('blur', () => { if(!finish(true)) finish(false); });
-    preview();
-    inp.focus(); inp.select();
-  }
-  slot.addEventListener('click', e => { e.stopPropagation(); edit(); });
-  show();
-  return slot;
-}
-
 function itemRow(tab, item){
   const row = document.createElement('div');
   row.className = 'item' + (item.done ? ' done' : '') + (item.wait && !item.done ? ' waiting' : '')
-                + (isLT(item) ? ' lt' : '');
+                + (isLT(item) ? ' lt' : '') + (SPACE === 'fa' && isHot(item) ? ' urgent' : '');
 
   const box = document.createElement('button');
   box.className = 'box';
@@ -1611,7 +1446,7 @@ function itemRow(tab, item){
     body.appendChild(meta);
   }
 
-  if(SPACE === 'fa' && !item.done && !lt) body.appendChild(dueSlot(item));
+  if(SPACE === 'fa' && !item.done && !lt) body.appendChild(hotMark(item));
 
   const chev = document.createElementNS('http://www.w3.org/2000/svg','svg');
   chev.setAttribute('class','chev');
@@ -1653,7 +1488,8 @@ function listInto(host, tab){
   const items = data[tab];
   if(!items.length){ host.appendChild(emptyBlock(tab)); return; }
 
-  const activeItems = items.filter(i => !i.done && !i.wait && !i.lt);
+  const open0       = items.filter(i => !i.done && !i.wait && !i.lt);
+  const activeItems = SPACE === 'fa' ? open0.filter(i => i.hot).concat(open0.filter(i => !i.hot)) : open0;
   const waiting     = items.filter(i => !i.done && i.wait && !i.lt)
                            .sort((a,b) => (a.since || 0) - (b.since || 0));
   const longterm    = items.filter(i => !i.done && i.lt);
@@ -1755,6 +1591,20 @@ function renderNarrow(){
 
 function renderCount(open, waiting){
   count.innerHTML = '';
+  const hot = totalHot();
+  if(hot){
+    const h = document.createElement('button');
+    h.className = 'hotlink';
+    h.innerHTML = hot + '<span class="w"> urgent</span>';
+    h.setAttribute('aria-label', hot + ' urgent. Open the list');
+    h.onclick = openHot;
+    count.appendChild(h);
+    if(open || waiting){
+      const s0 = document.createElement('span');
+      s0.className = 'sep'; s0.textContent = '\u00b7';
+      count.appendChild(s0);
+    }
+  }
   if(open){
     const o = document.createElement('span');
     o.innerHTML = open + '<span class="w"> open</span>';
@@ -1850,7 +1700,7 @@ function switchSide(to){
   if(pdet.classList.contains('up')){
     pdet.classList.remove('up'); openProj = null; openProjTab = null; projFromBoard = false;
   }
-  if(duesUp()) closeDues();
+  if(hotUp()) closeHot();
   SPACE = to;
   deriveTabs();
   let next = null;
@@ -1871,6 +1721,7 @@ document.getElementById('sideBtn').onclick = () => switchSide(SPACE === 'fa' ? '
 
 function render(){
   renderSides();
+  if(hotUp()) renderHot();
   if(WIDE.matches) renderWide(); else renderNarrow();
   if(refocus && WIDE.matches){
     const i = TABS.indexOf(refocus);
@@ -1879,7 +1730,7 @@ function render(){
   }
   refocus = null;
   document.getElementById('pipeBadge').textContent = totalWaiting() || '';
-  document.getElementById('duesBadge').textContent = datedItems().length || '';
+  document.getElementById('hotBadge').textContent = totalHot() || '';
   const lt = totalLT();
   document.getElementById('projBadge').textContent = lt || '';
   document.getElementById('projCount').textContent = lt || '';
@@ -2272,84 +2123,66 @@ function closeProjects(){
   scrim.classList.remove('up');
 }
 
-/* ---------- deadlines: the waterfall ---------- */
-const dues     = document.getElementById('dues');
-const duesbody = document.getElementById('duesbody');
-function duesUp(){ return !!dues && dues.classList.contains('up'); }
-
-function datedItems(){
+/* ---------- urgent: the Fundamental side's short list ---------- */
+function isHot(item){ return !!item.hot && !item.done && !isLT(item); }
+function hotItems(){
   const out = [];
-  TABS.forEach(tab => (data[tab] || []).forEach(item => {
-    if(item.done || isLT(item)) return;
-    const d = fromISO(item.due);
-    if(d) out.push({ tab, item, d });
-  }));
-  out.sort((a, b) => (a.d - b.d) || a.item.t.localeCompare(b.item.t));
+  TABS.forEach(tab => (data[tab] || []).forEach(item => { if(isHot(item)) out.push({ tab, item }); }));
   return out;
 }
+function totalHot(){ return SPACE === 'fa' ? hotItems().length : 0; }
+function hotUp(){ const el = document.getElementById('hot'); return !!el && el.classList.contains('up'); }
 
-function renderDues(){
-  const rows = datedItems();
-  const now = dayStart(new Date());
-  document.getElementById('duesHead').textContent = rows.length ? rows.length + ' dated' : '';
-  duesbody.innerHTML = '';
+function hotMark(item){
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'hot';
+  b.setAttribute('aria-label', item.hot ? 'Urgent. Tap to make it less urgent' : 'Mark urgent');
+  b.innerHTML = '<i></i>';
+  b.onclick = e => {
+    e.stopPropagation();
+    if(item.hot) delete item.hot; else item.hot = true;
+    save(); render();
+  };
+  return b;
+}
+
+function renderHot(){
+  const body = document.getElementById('hotbody');
+  const rows = hotItems();
+  document.getElementById('hotHead').textContent = rows.length ? rows.length + ' urgent' : '';
+  body.innerHTML = '';
   if(!rows.length){
-    duesbody.innerHTML = '<div class="empty"><div class="line"></div><p>No deadlines yet.</p>' +
-      '<span>Tap the right edge of an item to give it a date</span></div>';
+    body.innerHTML = '<div class="empty"><div class="line"></div><p>Nothing urgent.</p>' +
+      '<span>Tap the diamond on a Fundamental item to raise it</span></div>';
     return;
   }
-  /* the horizon stretches to the last date, between two weeks and four months */
-  const lastIn = Math.max(0, daysFrom(now, rows[rows.length - 1].d));
-  const span = Math.max(14, Math.min(120, lastIn + 3));
-  const pct = n => Math.max(0, Math.min(100, (n / span) * 100));
-  const step = span > 63 ? 14 : 7;
-  const ticks = [];
-  const first = new Date(now);
-  first.setDate(first.getDate() + (((8 - first.getDay()) % 7) || 7));   /* next Monday */
-  for(let d = new Date(first); daysFrom(now, d) <= span - 3; d.setDate(d.getDate() + step)){
-    ticks.push({ n: daysFrom(now, d), label: d.getDate() + ' ' + MON3[d.getMonth()] });
-  }
   const multi = new Set(rows.map(r => r.tab)).size > 1;
-
-  const axis = document.createElement('div');
-  axis.className = 'wfaxis';
-  axis.innerHTML = '<div class="lane"><span class="tk now" style="left:0">Today</span>' +
-    ticks.filter(t => pct(t.n) > 14 && pct(t.n) < 92)
-         .map(t => '<span class="tk" style="left:' + pct(t.n) + '%">' + t.label + '</span>').join('') + '</div>';
-  duesbody.appendChild(axis);
-
-  const grid = ticks.map(t => '<span class="g" style="left:' + pct(t.n) + '%"></span>').join('');
-  rows.forEach(({ tab, item, d }) => {
-    const n = daysFrom(now, d);
-    const b = document.createElement('button');
-    b.className = 'wf' + (n === 0 || n === 1 ? ' soon' : '');
-    const x = pct(n);
-    const mark = n < 0 ? '<span class="pt past" style="left:0"></span>'
-               : n > span ? '<span class="pt far" style="left:100%"></span>'
-               : '<span class="pt" style="left:' + x + '%"></span>';
-    b.innerHTML =
-      '<div class="top"><span class="t">' + escapeHtml(item.t) + '</span>' +
-      '<span class="d">' + escapeHtml(fmtDue(item.due)) + '</span></div>' +
-      (multi ? '<div class="p">' + escapeHtml(tab) + '</div>' : '') +
-      '<div class="lane">' + grid + (n > 0 ? '<span class="bar" style="width:' + x + '%"></span>' : '') + mark + '</div>';
-    b.onclick = () => { closeDues(); openDetail(tab, item); };
-    duesbody.appendChild(b);
+  let last = null;
+  rows.forEach(({ tab, item }) => {
+    if(multi && tab !== last){
+      const h = document.createElement('div');
+      h.className = 'hotgroup';
+      h.textContent = tab;
+      body.appendChild(h);
+      last = tab;
+    }
+    body.appendChild(itemRow(tab, item));
   });
 }
-function openDues(){
+function openHot(){
   closeSheet();
-  renderDues();
-  dues.classList.add('up');
+  renderHot();
+  document.getElementById('hot').classList.add('up');
   scrim.classList.add('up');
-  duesbody.scrollTop = 0;
+  document.getElementById('hotbody').scrollTop = 0;
 }
-function closeDues(){
-  dues.classList.remove('up');
+function closeHot(){
+  document.getElementById('hot').classList.remove('up');
   scrim.classList.remove('up');
 }
-document.getElementById('duesBtn').onclick     = openDues;
-document.getElementById('duesMenuBtn').onclick = openDues;
-document.getElementById('duesBack').onclick    = closeDues;
+document.getElementById('hotBack').onclick    = closeHot;
+document.getElementById('hotMenuBtn').onclick = openHot;
 
 function renderProjects(){
   const {live, closed} = projectsEverywhere();
@@ -3167,7 +3000,7 @@ function openSheet(){
         : '');
   sm.style.display = sm.textContent ? '' : 'none';
   document.getElementById('pipeBadge').textContent = totalWaiting() || '';
-  document.getElementById('duesBadge').textContent = datedItems().length || '';
+  document.getElementById('hotBadge').textContent = totalHot() || '';
   reflectSyncButtons();
   if(SYNC.on && conflictPending){
     setStatus('warn', 'Cloud changed elsewhere');
