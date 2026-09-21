@@ -172,5 +172,98 @@ function graph(cloud) {
   ok('newer OneDrive copy adopted', w.localStorage.getItem('ledger.v1').includes('newer cloud item'));
 }
 
-console.log('\n=== v12: ' + pass + ' passed, ' + fail + ' failed');
+
+/* ---------- 11. deadlines: the parser ---------- */
+{
+  const { g } = boot({ store: v10store });
+  const now = 'new Date(2026, 8, 21)';   // a Monday
+  const P = x => g(`parseDue(${JSON.stringify(x)}, ${now})`);
+  const cases = [
+    ['today','2026-09-21'], ['tmrw','2026-09-22'], ['tomorrow','2026-09-22'],
+    ['fri','2026-09-25'], ['Friday','2026-09-25'], ['next fri','2026-10-02'], ['mon','2026-09-28'],
+    ['+5','2026-09-26'], ['5d','2026-09-26'], ['2w','2026-10-05'],
+    ['10/3','2026-10-03'], ['25/9','2026-09-25'], ['oct 3','2026-10-03'], ['3 oct','2026-10-03'],
+    ['October 3rd','2026-10-03'], ['1/15','2027-01-15'], ['9/10','2026-09-10'],
+    ['15','2026-10-15'], ['30','2026-09-30'], ['12/25/27','2027-12-25'], ['2026-11-02','2026-11-02'],
+  ];
+  cases.forEach(([inp, want]) => ok('parses "' + inp + '"', P(inp) === want));
+  ok('an impossible date is refused', P('2/30') === null);
+  ok('nonsense is refused', P('banana') === null);
+  ok('empty clears', P('') === '');
+  const F = x => g(`fmtDue(${JSON.stringify(x)}, ${now})`);
+  ok('shows Today', F('2026-09-21') === 'Today');
+  ok('shows Tmrw', F('2026-09-22') === 'Tmrw');
+  ok('this week shows the day', F('2026-09-25') === 'Fri');
+  ok('later shows the date', F('2026-10-03') === '3 Oct');
+  ok('a past date reads like any other', F('2026-09-10') === '10 Sep');
+  ok('another year carries the year', F('2027-01-15') === '15 Jan 27');
+}
+
+/* ---------- 12. deadlines: the row ---------- */
+{
+  const iso = n => { const d = new Date(); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+  const lists = {
+    Fundamental: [ item('a','Railcar comps'), item('b','Muni refresh', { due: iso(10) }), item('x','Old one', { done:true, due: iso(2) }),
+                   item('p','Handover', { lt:true, steps:[] }), item('q','Late thing', { due: iso(-3) }), item('r','Board pack', { due: iso(1) }) ],
+    Personal:    [ item('c','Renew visa') ],
+  };
+  const store = { 'ledger.v1': JSON.stringify(lists), 'ledger.v1.tabs': JSON.stringify(['Fundamental','Personal']),
+                  'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Personal:'own' }) };
+  const { w, d, g } = boot({ store });
+  ok('no date slots on Own', d.querySelectorAll('.due').length === 0);
+  d.getElementById('sideBtn').click();
+  const slots = d.querySelectorAll('.item .due');
+  ok('open Fundamental items get a date slot, done and long-term do not', slots.length === 4);
+  ok('an undated item shows the quiet calendar mark', !!d.querySelector('.item .due.nodate svg'));
+  ok('tomorrow is picked out', [...slots].some(s => s.classList.contains('soon') && s.textContent === 'Tmrw'));
+  ok('nothing says overdue anywhere', !/overdue/i.test(d.body.textContent));
+
+  /* type a date in */
+  const empty = d.querySelector('.item .due.nodate');
+  empty.click();
+  const inp = d.querySelector('.item .due input');
+  ok('tapping the slot opens a text field', !!inp);
+  ok('tapping the slot does not open the item', !d.getElementById('detail').classList.contains('up'));
+  inp.value = '+3';
+  inp.dispatchEvent(new w.Event('input'));
+  ok('it previews the date as you type', d.querySelector('.item .due .pv').textContent !== '' && d.querySelector('.item .due .pv').textContent !== '?');
+  inp.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  const saved = JSON.parse(w.localStorage.getItem('ledger.v1')).Fundamental.find(i => i.id === 'a');
+  ok('Enter saves it', saved.due === iso(3));
+
+  /* an unreadable date is not saved */
+  const slotB = [...d.querySelectorAll('.item .due')].find(s => s.textContent && !s.classList.contains('nodate') && s.closest('.item').textContent.includes('Muni'));
+  slotB.click();
+  const inpB = d.querySelector('.item .due input');
+  inpB.value = 'someday'; inpB.dispatchEvent(new w.Event('input'));
+  inpB.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  ok('nonsense is flagged and kept for fixing', inpB.classList.contains('bad') && d.contains(inpB));
+  inpB.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  ok('escape leaves the old date alone', JSON.parse(w.localStorage.getItem('ledger.v1')).Fundamental.find(i => i.id === 'b').due === iso(10));
+
+  /* clearing */
+  const slotR = [...d.querySelectorAll('.item .due')].find(s => s.closest('.item').textContent.includes('Board pack'));
+  slotR.click();
+  const inpR = d.querySelector('.item .due input');
+  inpR.value = ''; inpR.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+  ok('an empty field clears the date', JSON.parse(w.localStorage.getItem('ledger.v1')).Fundamental.find(i => i.id === 'r').due === undefined);
+
+  /* ---------- 13. the waterfall ---------- */
+  d.getElementById('duesBtn').click();
+  ok('the waterfall opens', d.getElementById('dues').classList.contains('up'));
+  const rows = [...d.querySelectorAll('#duesbody .wf')];
+  const titles = rows.map(r => r.querySelector('.t').textContent);
+  ok('soonest first, a past date at the top', JSON.stringify(titles) === JSON.stringify(['Late thing','Railcar comps','Muni refresh']));
+  ok('done and long-term items stay out', !titles.includes('Old one') && !titles.includes('Handover'));
+  ok('a past date sits quietly at today', !!rows[0].querySelector('.pt.past') && !/overdue/i.test(d.getElementById('duesbody').textContent));
+  ok('bars grow down the list', parseFloat(rows[2].querySelector('.bar').style.width) > parseFloat(rows[1].querySelector('.bar').style.width));
+  ok('the axis starts at today', /Today/.test(d.querySelector('.wfaxis').textContent));
+  ok('menu badge counts dated items', d.getElementById('duesBadge').textContent === '3');
+  rows[1].click();
+  ok('tapping a row opens the item', d.getElementById('detail').classList.contains('up') && !d.getElementById('dues').classList.contains('up'));
+  ok('dates ride along in the saved ledger', w.localStorage.getItem('ledger.v1').includes('"due"'));
+  ok('the waterfall button is Fundamental-only', d.getElementById('duesBtn').classList.contains('fa-only'));
+}
+
+console.log('\n=== v13: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
