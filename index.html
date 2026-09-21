@@ -70,6 +70,48 @@ header svg.seal{width:32px;height:32px;flex-shrink:0}
   display:flex;align-items:center;gap:0.55rem;white-space:nowrap;
 }
 .count .sep{opacity:0.45}
+
+/* the two sides of the ledger */
+.sides{flex-shrink:0}
+.sides .wrap{display:flex;align-items:baseline;gap:1.6rem;padding-bottom:0.9rem}
+.sides button{
+  background:none;border:none;cursor:pointer;padding:0.2rem 0 0.35rem;
+  font-family:'Jost',sans-serif;font-weight:300;
+  font-size:0.64rem;letter-spacing:0.28em;text-transform:uppercase;
+  color:var(--dim);border-bottom:1px solid transparent;
+  font-variant-numeric:tabular-nums;
+  transition:color .3s ease,border-color .3s ease;
+}
+.sides button .n{margin-left:0.6em;opacity:0.7}
+.sides button.on{color:var(--gold);border-bottom-color:var(--rule)}
+.sides button:not(.on):hover{color:var(--muted)}
+
+/* Fundamental is the same ledger in a cold key, so the side is never in doubt */
+html[data-side="fa"]{
+  --bg:#07090d;
+  --panel:#0b0e13;
+  --gold:#8FA9C4;
+  --amber:#A3B9CF;
+  --rule:rgba(143,169,196,0.30);
+}
+html[data-side="fa"] svg [fill="#BBA37D"]{fill:var(--gold)}
+html[data-side="fa"] svg [stroke="#BBA37D"]{stroke:var(--gold)}
+body{transition:background-color .35s ease}
+/* narrow screens: tighten the masthead so the menu can never be pushed off */
+header .wrap > .mastbtn, header .wrap > .menu{flex-shrink:0}
+.count{min-width:0;overflow:hidden}
+@media (max-width:460px){
+  header .wrap{gap:0.7rem}
+  .brand{letter-spacing:0.2em;font-size:1.16rem}
+  .count{letter-spacing:0.12em;gap:0.4rem;padding-right:0.3rem}
+  .sides .wrap{gap:1.2rem}
+}
+/* the Fold's cover screen: numbers only, the waiting one still opens Pipeline */
+@media (max-width:380px){
+  .count .w{display:none}
+  .count .waitlink{color:var(--amber)}
+}
+.tabbtn.mv{width:auto;min-width:2.6rem;padding:0 0.45rem;font-size:0.58rem;letter-spacing:0.16em;text-transform:uppercase}
 .waitlink{
   background:none;border:none;cursor:pointer;
   font-family:'Jost',sans-serif;font-weight:300;
@@ -803,6 +845,11 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   </div>
 </header>
 
+<div class="sides" id="sides"><div class="wrap">
+  <button type="button" data-side="own">Own<span class="n" id="sideOwnN"></span></button>
+  <button type="button" data-side="fa">Fundamental<span class="n" id="sideFaN"></span></button>
+</div></div>
+
 <nav id="nav"><div class="wrap" id="navwrap"></div></nav>
 
 <main id="scroller"><div class="wrap" id="stage"></div></main>
@@ -943,13 +990,16 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v10';
+const APP_VERSION = 'v11';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
 const KEY     = 'ledger.v1';
 const TABKEY  = KEY + '.tabs';
 const UIKEY   = KEY + '.ui';
+const SPACEKEY = KEY + '.spaces';   /* { panel: 'own' | 'fa' } */
+const SIDEKEY  = KEY + '.side';     /* which side is showing */
+const SIDES    = { own: 'Own', fa: 'Fundamental' };
 
 const WIDE = window.matchMedia('(min-width:1000px)');
 
@@ -961,14 +1011,18 @@ const STALE_DAYS = 10;
 let loadClean = true;
 let storageFailed = false;
 
-let TABS   = loadTabs();
+let ALL      = loadTabs();      /* every panel on both sides, in order */
+let SPACEMAP = loadSpaces();
+let SPACE    = loadSide();
+let TABS     = [];              /* the panels on the side showing */
 let UI     = loadUI();          /* {waitOpen:{panel:bool}, pipeSort:'age'|'panel'} */
 let data   = load();
 reconcileTabs();
 
 let active = TABS[0];
-try{ active = localStorage.getItem(KEY + '.tab') || TABS[0]; }catch(e){}
+try{ active = localStorage.getItem(KEY + '.tab.' + SPACE) || localStorage.getItem(KEY + '.tab') || TABS[0]; }catch(e){}
 if(!TABS.includes(active)) active = TABS[0];
+applySide();
 
 /* open detail state */
 let openTab  = null;
@@ -986,6 +1040,43 @@ function loadTabs(){
   }catch(e){}
   return DEFAULT_TABS.slice();
 }
+
+function loadSpaces(){
+  try{
+    const saved = JSON.parse(localStorage.getItem(SPACEKEY) || 'null');
+    if(saved && typeof saved === 'object') return saved;
+  }catch(e){}
+  return {};
+}
+function loadSide(){
+  try{ return localStorage.getItem(SIDEKEY) === 'fa' ? 'fa' : 'own'; }catch(e){ return 'own'; }
+}
+/* a panel with no recorded side goes to Fundamental only if that is its name */
+function spaceOf(t){
+  if(SPACEMAP[t] === 'fa' || SPACEMAP[t] === 'own') return SPACEMAP[t];
+  return /^(fundamental|fa)$/i.test(String(t).trim()) ? 'fa' : 'own';
+}
+function deriveTabs(){ TABS = ALL.filter(t => spaceOf(t) === SPACE); }
+/* each side always has at least one panel to type into */
+function ensureSides(){
+  ['own', 'fa'].forEach(side => {
+    if(ALL.some(t => spaceOf(t) === side)) return;
+    let name = side === 'fa' ? 'Fundamental' : 'Personal';
+    while(ALL.some(t => t.toLowerCase() === name.toLowerCase())) name += ' 2';
+    ALL.push(name); SPACEMAP[name] = side;
+    if(!Array.isArray(data[name])) data[name] = [];
+  });
+  ALL.forEach(t => { SPACEMAP[t] = spaceOf(t); });
+}
+/* fold the showing side's panels back into the full list, keeping the other
+   side exactly as it was */
+function syncAll(){
+  const others = ALL.filter(t => !TABS.includes(t) && spaceOf(t) !== SPACE);
+  TABS.forEach(t => { SPACEMAP[t] = SPACE; });
+  ALL = others.concat(TABS);
+  Object.keys(SPACEMAP).forEach(k => { if(!ALL.includes(k)) delete SPACEMAP[k]; });
+}
+function applySide(){ document.documentElement.setAttribute('data-side', SPACE); }
 
 function loadUI(){
   try{
@@ -1005,7 +1096,7 @@ function loadUI(){
    is ever silently dropped. */
 function load(){
   const out = {};
-  TABS.forEach(t => out[t] = []);
+  ALL.forEach(t => out[t] = []);
   let txt = null;
   try{ txt = localStorage.getItem(KEY); }
   catch(e){ loadClean = false; return out; }
@@ -1033,9 +1124,11 @@ function keepRescueCopy(txt){
 /* Any panel that has data but isn't in the list gets appended, and any listed
    panel without data gets an empty list. Guarantees they stay in step. */
 function reconcileTabs(){
-  Object.keys(data).forEach(t => { if(!TABS.includes(t)) TABS.push(t); });
-  TABS.forEach(t => { if(!Array.isArray(data[t])) data[t] = []; });
-  if(!TABS.length){ TABS = DEFAULT_TABS.slice(); TABS.forEach(t => data[t] = data[t] || []); }
+  Object.keys(data).forEach(t => { if(!ALL.includes(t)) ALL.push(t); });
+  ALL.forEach(t => { if(!Array.isArray(data[t])) data[t] = []; });
+  if(!ALL.length){ ALL = DEFAULT_TABS.slice(); ALL.forEach(t => data[t] = data[t] || []); }
+  ensureSides();
+  deriveTabs();
 }
 
 /* Bring an item up to the current shape. Unknown fields are carried through
@@ -1084,10 +1177,14 @@ function put(k, v){
   catch(e){ return false; }
 }
 function save(){
+  syncAll();
   const okItems = put(KEY, JSON.stringify(data));
-  put(TABKEY, JSON.stringify(TABS));
+  put(TABKEY, JSON.stringify(ALL));
+  put(SPACEKEY, JSON.stringify(SPACEMAP));
+  put(SIDEKEY, SPACE);
   put(UIKEY, JSON.stringify(UI));
   put(KEY + '.tab', active);
+  put(KEY + '.tab.' + SPACE, active);
   if(storageFailed !== !okItems){ storageFailed = !okItems; renderAlerts(); }
 }
 function saveUI(){
@@ -1113,7 +1210,7 @@ const pipebody = document.getElementById('pipebody');
 /* Adopt an incoming set of panels (from cloud or a backup file) without
    dropping any panel it contains. Order follows the incoming order, with
    any extra local panels appended. */
-function adoptLists(lists, order){
+function adoptLists(lists, order, spaces){
   const next = {};
   const incoming = Object.keys(lists).filter(k => Array.isArray(lists[k]));
   incoming.forEach(k => next[k] = lists[k].map(normalize));
@@ -1124,7 +1221,10 @@ function adoptLists(lists, order){
   incoming.forEach(t => { if(!newTabs.includes(t)) newTabs.push(t); });
   if(!newTabs.length) return false;
   data = next;
-  TABS = newTabs;
+  ALL = newTabs;
+  if(spaces && typeof spaces === 'object'){
+    Object.keys(spaces).forEach(k => { if(spaces[k] === 'fa' || spaces[k] === 'own') SPACEMAP[k] = spaces[k]; });
+  }
   reconcileTabs();
   if(!TABS.includes(active)) active = TABS[0];
   return true;
@@ -1438,7 +1538,7 @@ function renderCount(open, waiting){
   count.innerHTML = '';
   if(open){
     const o = document.createElement('span');
-    o.textContent = open + ' open';
+    o.innerHTML = open + '<span class="w"> open</span>';
     count.appendChild(o);
   }
   if(waiting){
@@ -1449,7 +1549,7 @@ function renderCount(open, waiting){
     }
     const w = document.createElement('button');
     w.className = 'waitlink';
-    w.textContent = waiting + ' waiting';
+    w.innerHTML = waiting + '<span class="w"> waiting</span>';
     w.onclick = openPipe;
     count.appendChild(w);
   }
@@ -1515,7 +1615,42 @@ function renderWide(){
   stage.appendChild(board);
 }
 let refocus = null;
+/* the switch under the masthead: counts show what is open on each side */
+function renderSides(){
+  const open = side => ALL.filter(t => spaceOf(t) === side).reduce((n, t) => n + openCount(t), 0);
+  document.getElementById('sideOwnN').textContent = open('own') || '';
+  document.getElementById('sideFaN').textContent  = open('fa')  || '';
+  document.querySelectorAll('#sides button').forEach(b => b.classList.toggle('on', b.dataset.side === SPACE));
+}
+
+/* a view change, not an edit: nothing is written to OneDrive */
+function switchSide(to){
+  if(!SIDES[to] || to === SPACE) return;
+  try{ localStorage.setItem(KEY + '.tab.' + SPACE, active); }catch(e){}
+  if(openItem){ openItem = null; closeDetail(); }
+  if(pdet.classList.contains('up')){
+    pdet.classList.remove('up'); openProj = null; openProjTab = null; projFromBoard = false;
+  }
+  SPACE = to;
+  deriveTabs();
+  let next = null;
+  try{ next = localStorage.getItem(KEY + '.tab.' + SPACE); }catch(e){}
+  active = TABS.includes(next) ? next : TABS[0];
+  applySide();
+  try{
+    localStorage.setItem(SIDEKEY, SPACE);
+    localStorage.setItem(KEY + '.tab', active);
+    localStorage.setItem(KEY + '.tab.' + SPACE, active);
+  }catch(e){}
+  render();
+  if(proj.classList.contains('up')) renderProjects();
+  if(pipe.classList.contains('up')) renderPipe();
+  scroller.scrollTop = 0;
+}
+document.querySelectorAll('#sides button').forEach(b => { b.onclick = () => switchSide(b.dataset.side); });
+
 function render(){
+  renderSides();
   if(WIDE.matches) renderWide(); else renderNarrow();
   if(refocus && WIDE.matches){
     const i = TABS.indexOf(refocus);
@@ -2296,7 +2431,7 @@ const DIRTYKEY = KEY + '.dirty';
 function localSavedAt(){ try{ return +localStorage.getItem(STAMPKEY) || 0; }catch(e){ return 0; } }
 function setSavedAt(t){ try{ t ? localStorage.setItem(STAMPKEY, String(t)) : localStorage.removeItem(STAMPKEY); }catch(e){} }
 function localItemCount(){
-  try{ return TABS.reduce((n, t) => n + ((data[t] || []).length), 0); }catch(e){ return 0; }
+  try{ return ALL.reduce((n, t) => n + ((data[t] || []).length), 0); }catch(e){ return 0; }
 }
 
 function readAuth(){
@@ -2490,8 +2625,8 @@ async function msIdentify(){
 /* tolerates the current wrapper, the v5 wrapper, and a bare panels object */
 function parseCloud(text){
   const raw = JSON.parse(text);
-  if(raw && raw.__ledger && raw.lists) return { lists: raw.lists, order: raw.order || null, savedAt: +raw.savedAt || 0 };
-  return { lists: raw, order: null, savedAt: 0 };
+  if(raw && raw.__ledger && raw.lists) return { lists: raw.lists, order: raw.order || null, savedAt: +raw.savedAt || 0, spaces: raw.spaces || null };
+  return { lists: raw, order: null, savedAt: 0, spaces: null };
 }
 
 async function cloudPull(){
@@ -2513,7 +2648,7 @@ async function cloudPull(){
 
     const res = await gr('/me/drive/special/approot:/' + MS.file + ':/content');
     if(!res.ok) throw new Error('HTTP ' + res.status);
-    const { lists, order, savedAt } = parseCloud(await res.text());
+    const { lists, order, savedAt, spaces } = parseCloud(await res.text());
     setCtag(m.cTag || m.eTag || null);
 
     const cloudStamp = +savedAt || 0;
@@ -2524,9 +2659,10 @@ async function cloudPull(){
     /* Take the OneDrive copy only when it is provably newer, or when this
        device holds nothing to lose. Anything else and the device wins. */
     if(hasCloud && (empty || cloudStamp > mine)){
-      adoptLists(lists, order);
+      adoptLists(lists, order, spaces);
       localStorage.setItem(KEY, JSON.stringify(data));
-      localStorage.setItem(TABKEY, JSON.stringify(TABS));
+      localStorage.setItem(TABKEY, JSON.stringify(ALL));
+      localStorage.setItem(SPACEKEY, JSON.stringify(SPACEMAP));
       if(openItem){ openItem = null; closeDetail(); }
       setSavedAt(cloudStamp);
       render();
@@ -2552,7 +2688,7 @@ async function cloudPush(force){
   if(!SYNC.on) return false;
   SYNC.busy = true; setStatus('busy', 'Saving\u2026');
   try{
-    const payload = { __ledger: 1, v: 6, rev: newRev(), savedAt: Date.now(), order: TABS, lists: data };
+    const payload = { __ledger: 1, v: 6, rev: newRev(), savedAt: Date.now(), order: ALL, spaces: SPACEMAP, lists: data };
     const body    = JSON.stringify(payload, null, 2);
     const headers = { 'Content-Type': 'application/json' };
     const ct = ctag();
@@ -2680,10 +2816,10 @@ async function restoreFromCloud(path){
   try{
     const res = await gr('/me/drive/special/approot:/' + path + ':/content');
     if(!res.ok) throw new Error('HTTP ' + res.status);
-    const { lists, order } = parseCloud(await res.text());
+    const { lists, order, spaces } = parseCloud(await res.text());
     if(!lists || !Object.keys(lists).length) throw new Error('empty');
     if(openItem){ openItem = null; closeDetail(); }
-    if(!adoptLists(lists, order)) throw new Error('empty');
+    if(!adoptLists(lists, order, spaces)) throw new Error('empty');
     _save();
     render();
     closeCloudSheet(); closeSheet();
@@ -2720,7 +2856,7 @@ save = function(){ _save(); scheduleSync(); };
 
 /* ---------- backup sheet ---------- */
 function openSheet(){
-  const total = TABS.reduce((n,t) => n + data[t].length, 0);
+  const total = ALL.reduce((n,t) => n + data[t].length, 0);
   stamp.textContent = total + (total === 1 ? ' item stored' : ' items stored');
   const sm = document.getElementById('storeMsg');
   sm.className = 'syncmsg' + (storageFailed || !loadClean ? ' err' : '');
@@ -2802,7 +2938,15 @@ function renderTabManager(){
     rm.disabled = (TABS.length <= 1);
     rm.onclick = () => removeTab(i);
 
-    row.append(inp, cnt, up, dn, rm);
+    const mv = document.createElement('button');
+    const other = SPACE === 'fa' ? 'own' : 'fa';
+    mv.className = 'tabbtn mv';
+    mv.textContent = other === 'fa' ? '\u2192 FA' : '\u2192 Own';
+    mv.setAttribute('aria-label', 'Move to ' + SIDES[other]);
+    mv.disabled = (TABS.length <= 1);
+    mv.onclick = () => moveSide(i);
+
+    row.append(inp, cnt, up, dn, mv, rm);
     tabListEl.appendChild(row);
   });
 }
@@ -2812,7 +2956,7 @@ function renameTab(i, raw){
   const prev = TABS[i];
   if(!next){ tabMsg('A panel needs a name.', 'err'); renderTabManager(); return; }
   if(next === prev){ tabMsg(''); return; }
-  if(TABS.some((t, j) => j !== i && t.toLowerCase() === next.toLowerCase())){
+  if(ALL.some(t => t !== prev && t.toLowerCase() === next.toLowerCase())){
     tabMsg('There is already a panel with that name.', 'err');
     renderTabManager(); return;
   }
@@ -2836,6 +2980,18 @@ function moveTab(i, dir){
   tabMsg('');
 }
 
+function moveSide(i){
+  const name = TABS[i];
+  const to = SPACE === 'fa' ? 'own' : 'fa';
+  if(TABS.length <= 1){ tabMsg('Each side keeps at least one panel.', 'err'); return; }
+  SPACEMAP[name] = to;
+  TABS.splice(i, 1);
+  if(active === name) active = TABS[0];
+  if(openTab === name){ openTab = null; openItem = null; closeDetail(); }
+  save(); renderTabManager(); render();
+  tabMsg('Moved "' + name + '" to ' + SIDES[to] + '. Items kept.', 'ok');
+}
+
 function removeTab(i){
   const name = TABS[i];
   const n = (data[name] || []).length;
@@ -2857,7 +3013,7 @@ function removeTab(i){
 function addTab(raw){
   const name = (raw || '').trim();
   if(!name){ return false; }
-  if(TABS.some(t => t.toLowerCase() === name.toLowerCase())){
+  if(ALL.some(t => t.toLowerCase() === name.toLowerCase())){
     tabMsg('There is already a panel with that name.', 'err');
     return false;
   }
@@ -2870,6 +3026,8 @@ function addTab(raw){
 
 function openTabSheet(focusNew){
   tabMsg('');
+  const h = tabSheet.querySelector('h2');
+  if(h) h.textContent = 'Panels \u00b7 ' + SIDES[SPACE];
   renderTabManager();
   newTabIn.value = '';
   closeSheet();
@@ -2940,7 +3098,7 @@ document.getElementById('syncForget').onclick = () => {
 };
 
 document.getElementById('exp').onclick = () => {
-  const payload = { __ledger: 1, v: 6, order: TABS, lists: data };
+  const payload = { __ledger: 1, v: 6, order: ALL, spaces: SPACEMAP, lists: data };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -2964,9 +3122,10 @@ file.onchange = () => {
          original flat file that was just the panels object */
       const lists  = (parsed && parsed.__ledger && parsed.lists) ? parsed.lists : parsed;
       const order  = (parsed && parsed.order)  ? parsed.order  : null;
+      const spaces = (parsed && parsed.spaces) ? parsed.spaces : null;
       if(!lists || typeof lists !== 'object') throw new Error('shape');
       if(openItem){ openItem = null; closeDetail(); }
-      if(!adoptLists(lists, order)) throw new Error('empty');
+      if(!adoptLists(lists, order, spaces)) throw new Error('empty');
       save(); render(); closeSheet();
     }catch(e){
       stamp.textContent = "That file isn't a Ledger backup";
