@@ -71,20 +71,20 @@ header svg.seal{width:32px;height:32px;flex-shrink:0}
 }
 .count .sep{opacity:0.45}
 
-/* the two sides of the ledger */
-.sides{flex-shrink:0}
-.sides .wrap{display:flex;align-items:baseline;gap:1.6rem;padding-bottom:0.9rem}
-.sides button{
-  background:none;border:none;cursor:pointer;padding:0.2rem 0 0.35rem;
-  font-family:'Jost',sans-serif;font-weight:300;
-  font-size:0.64rem;letter-spacing:0.28em;text-transform:uppercase;
-  color:var(--dim);border-bottom:1px solid transparent;
-  font-variant-numeric:tabular-nums;
-  transition:color .3s ease,border-color .3s ease;
+/* the side switch: tap the seal. A small F in its corner lights on Fundamental */
+.sidebtn{
+  position:relative;flex-shrink:0;display:flex;
+  background:none;border:none;padding:0;margin:0;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
 }
-.sides button .n{margin-left:0.6em;opacity:0.7}
-.sides button.on{color:var(--gold);border-bottom-color:var(--rule)}
-.sides button:not(.on):hover{color:var(--muted)}
+.sideF{
+  position:absolute;right:-3px;bottom:-1px;
+  font-family:'Jost',sans-serif;font-weight:400;font-size:9px;line-height:1;
+  padding:1px 2px 0;background:var(--bg);color:var(--dim);border-radius:1px;
+  transition:color .3s ease;
+}
+html[data-side="fa"] .sideF{color:var(--gold)}
+.sidebtn:active .sideF{color:var(--muted)}
 
 /* Fundamental is the same ledger in a cold key, so the side is never in doubt */
 html[data-side="fa"]{
@@ -104,7 +104,6 @@ header .wrap > .mastbtn, header .wrap > .menu{flex-shrink:0}
   header .wrap{gap:0.7rem}
   .brand{letter-spacing:0.2em;font-size:1.16rem}
   .count{letter-spacing:0.12em;gap:0.4rem;padding-right:0.3rem}
-  .sides .wrap{gap:1.2rem}
 }
 /* the Fold's cover screen: numbers only, the waiting one still opens Pipeline */
 @media (max-width:380px){
@@ -822,16 +821,19 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 
 <header>
   <div class="wrap">
+    <button type="button" class="sidebtn" id="sideBtn" aria-label="Switch to Fundamental">
     <svg class="seal" viewBox="0 0 96 96" fill="none" aria-hidden="true">
-      <circle cx="48" cy="48" r="37" stroke-width="2" stroke="#BBA37D"/>
-      <circle cx="48" cy="48" r="33" stroke-width="1" stroke="#BBA37D" opacity="0.55"/>
-      <path d="M45 30 L51 30 L48 44 Z" fill="#BBA37D" opacity="0.78"/>
-      <path d="M39 43 L45 43 L42 57 Z" fill="#BBA37D" opacity="0.9"/>
-      <path d="M51 43 L57 43 L54 57 Z" fill="#BBA37D" opacity="0.9"/>
-      <path d="M33 56 L39 56 L36 70 Z" fill="#BBA37D"/>
-      <path d="M45 56 L51 56 L48 70 Z" fill="#BBA37D"/>
-      <path d="M57 56 L63 56 L60 70 Z" fill="#BBA37D"/>
-    </svg>
+        <circle cx="48" cy="48" r="37" stroke-width="2" stroke="#BBA37D"/>
+        <circle cx="48" cy="48" r="33" stroke-width="1" stroke="#BBA37D" opacity="0.55"/>
+        <path d="M45 30 L51 30 L48 44 Z" fill="#BBA37D" opacity="0.78"/>
+        <path d="M39 43 L45 43 L42 57 Z" fill="#BBA37D" opacity="0.9"/>
+        <path d="M51 43 L57 43 L54 57 Z" fill="#BBA37D" opacity="0.9"/>
+        <path d="M33 56 L39 56 L36 70 Z" fill="#BBA37D"/>
+        <path d="M45 56 L51 56 L48 70 Z" fill="#BBA37D"/>
+        <path d="M57 56 L63 56 L60 70 Z" fill="#BBA37D"/>
+      </svg>
+      <span class="sideF" aria-hidden="true">F</span>
+    </button>
     <div class="brand">Ledger</div>
     <div class="count" id="count"></div>
     <button class="mastbtn" id="projBtn" aria-label="Long-term projects">
@@ -845,10 +847,6 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
   </div>
 </header>
 
-<div class="sides" id="sides"><div class="wrap">
-  <button type="button" data-side="own">Own<span class="n" id="sideOwnN"></span></button>
-  <button type="button" data-side="fa">Fundamental<span class="n" id="sideFaN"></span></button>
-</div></div>
 
 <nav id="nav"><div class="wrap" id="navwrap"></div></nav>
 
@@ -990,7 +988,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v11';
+const APP_VERSION = 'v12';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -1615,12 +1613,12 @@ function renderWide(){
   stage.appendChild(board);
 }
 let refocus = null;
-/* the switch under the masthead: counts show what is open on each side */
+/* the seal is the switch */
 function renderSides(){
-  const open = side => ALL.filter(t => spaceOf(t) === side).reduce((n, t) => n + openCount(t), 0);
-  document.getElementById('sideOwnN').textContent = open('own') || '';
-  document.getElementById('sideFaN').textContent  = open('fa')  || '';
-  document.querySelectorAll('#sides button').forEach(b => b.classList.toggle('on', b.dataset.side === SPACE));
+  const b = document.getElementById('sideBtn');
+  const label = 'Switch to ' + SIDES[SPACE === 'fa' ? 'own' : 'fa'];
+  b.setAttribute('aria-label', label);
+  b.title = label;
 }
 
 /* a view change, not an edit: nothing is written to OneDrive */
@@ -1647,7 +1645,7 @@ function switchSide(to){
   if(pipe.classList.contains('up')) renderPipe();
   scroller.scrollTop = 0;
 }
-document.querySelectorAll('#sides button').forEach(b => { b.onclick = () => switchSide(b.dataset.side); });
+document.getElementById('sideBtn').onclick = () => switchSide(SPACE === 'fa' ? 'own' : 'fa');
 
 function render(){
   renderSides();

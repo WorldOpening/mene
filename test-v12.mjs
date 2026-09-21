@@ -59,9 +59,9 @@ function graph(cloud) {
   ok('Own shows Own panels', /Lumina/.test(d.getElementById('navwrap').textContent) && /Personal/.test(d.getElementById('navwrap').textContent));
   ok('Fundamental panel is not on Own', !/Fundamental/.test(d.getElementById('navwrap').textContent));
   ok('Fundamental items hidden on Own', !body.includes('Call the broker'));
-  ok('side count: Own has 1 open', d.getElementById('sideOwnN').textContent === '1');
-  ok('side count: Fundamental has 1 open', d.getElementById('sideFaN').textContent === '1');
-  ok('the switch marks Own as on', d.querySelector('#sides [data-side="own"]').classList.contains('on'));
+  ok('no switch row under the masthead', !d.getElementById('sides'));
+  ok('the seal offers Fundamental', d.getElementById('sideBtn').getAttribute('aria-label') === 'Switch to Fundamental');
+  ok('the F sits on the seal', d.querySelector('#sideBtn .sideF').textContent === 'F');
   w.save();
   const tabs = JSON.parse(w.localStorage.getItem('ledger.v1.tabs'));
   const spaces = JSON.parse(w.localStorage.getItem('ledger.v1.spaces'));
@@ -72,18 +72,19 @@ function graph(cloud) {
   ok('every item survived', ['Call the broker','Fund launch','Draft memo','Renew visa'].every(t => stored.includes(t)));
 
   /* ---------- 2. switching ---------- */
-  d.querySelector('#sides [data-side="fa"]').click();
+  d.getElementById('sideBtn').click();
   ok('switch flips the palette', d.documentElement.getAttribute('data-side') === 'fa');
   ok('Fundamental items now showing', d.body.textContent.includes('Call the broker'));
   ok('Own items now hidden', !d.body.textContent.includes('Draft memo'));
   ok('long-term board scoped to Fundamental', g('projectsEverywhere().live.length') === 1);
   ok('waiting scoped to Fundamental', g('totalWaiting()') === 0);
   ok('side remembered', w.localStorage.getItem('ledger.v1.side') === 'fa');
+  ok('the seal now offers Own', d.getElementById('sideBtn').getAttribute('aria-label') === 'Switch to Own');
   ok('a switch writes nothing to the cloud', calls.length === 0);
-  d.querySelector('#sides [data-side="own"]').click();
+  d.getElementById('sideBtn').click();
   ok('long-term board empty on Own', g('projectsEverywhere().live.length') === 0);
   ok('waiting on Own', g('totalWaiting()') === 1);
-  d.querySelector('#sides [data-side="fa"]').click();
+  d.getElementById('sideBtn').click();
 
   /* ---------- 3. panels ---------- */
   ok('a name used on the other side is refused', w.addTab('Personal') === false);
@@ -171,5 +172,5 @@ function graph(cloud) {
   ok('newer OneDrive copy adopted', w.localStorage.getItem('ledger.v1').includes('newer cloud item'));
 }
 
-console.log('\n=== v11: ' + pass + ' passed, ' + fail + ' failed');
+console.log('\n=== v12: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
