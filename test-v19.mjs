@@ -189,13 +189,13 @@ function graph(cloud) {
   const titles = () => [...d.querySelectorAll('#stage .item .txt')].map(t => t.textContent);
   const saved = id => { const L = JSON.parse(w.localStorage.getItem('ledger.v1')); for (const k in L) { const f = L[k].find(i => i.id === id); if (f) return f; } };
 
-  ok('General has no urgent marks', d.querySelectorAll('.hot').length === 0);
-  ok('a flag on a General item does not light it', d.querySelectorAll('.item.urgent').length === 0);
-  ok('General masthead shows no urgent count', !d.querySelector('.hotlink'));
+  ok('General gets urgent marks too', d.querySelectorAll('#stage .item .hot').length === 1);
+  ok('a flagged General item lights up', d.querySelectorAll('#stage .item.urgent').length === 1);
+  ok('General masthead counts it', /^1/.test(d.querySelector('.hotlink').textContent));
 
   d.getElementById('sideBtn').click();
   ok('open Fundamental items get the diamond, done and long-term do not', d.querySelectorAll('#stage .item .hot').length === 3);
-  ok('nothing urgent yet', d.querySelectorAll('.item.urgent').length === 0 && !d.querySelector('.hotlink'));
+  ok('nothing urgent on this side yet', d.querySelectorAll('#stage .item.urgent').length === 0 && !d.querySelector('.hotlink'));
 
   /* raise the last item */
   const rowC = [...d.querySelectorAll('#stage .item')].find(r => r.textContent.includes('IC memo'));
@@ -233,7 +233,7 @@ function graph(cloud) {
   d.querySelector('.hotlink').click();
   d.getElementById('sideBtn').click();
   ok('switching side closes the urgent list', !d.getElementById('hot').classList.contains('up'));
-  ok('and hides the urgent count', !d.querySelector('.hotlink'));
+  ok('the count now follows the side you are on', !d.querySelector('.hotlink'));
   ok('the flag rides along in the saved ledger', w.localStorage.getItem('ledger.v1').includes('"hot":true'));
   ok('no date slots left over', d.querySelectorAll('.due').length === 0 && !d.getElementById('dues'));
 }
@@ -267,5 +267,5 @@ function graph(cloud) {
   ok('a current app says it is the latest', /already the latest/.test(d.getElementById('updSub').textContent));
 }
 
-console.log('\n=== v18: ' + pass + ' passed, ' + fail + ' failed');
+console.log('\n=== v19: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

@@ -114,12 +114,12 @@ header .wrap > .mastbtn, header .wrap > .menu{flex-shrink:0}
   .count{letter-spacing:0.12em;gap:0.4rem;padding-right:0.3rem}
 }
 /* the Fold's cover screen: numbers only, the waiting one still opens Pipeline */
-@media (max-width:380px){
+/* narrow screens: numbers only, the waiting one still opens Pipeline */
+@media (max-width:460px){
   .count .w{display:none}
   .count .waitlink{color:var(--amber)}
 }
-/* ---------- urgent (Fundamental side) ---------- */
-html:not([data-side="fa"]) .fa-only{display:none !important}
+/* ---------- urgent ---------- */
 :root{--ember:#CE4B37}
 .hot{
   flex-shrink:0;align-self:flex-start;
@@ -133,7 +133,8 @@ html:not([data-side="fa"]) .fa-only{display:none !important}
   transition:opacity .3s ease,background-color .3s ease,border-color .3s ease;
 }
 .body:hover .hot i{opacity:0.6}
-/* an urgent row: an ember rule down the left, a warm wash fading out, warmer ink */
+/* an urgent row, the same red on every side: a rule down the left edge,
+   a wash fading out, warmer ink */
 .item.urgent{
   background:linear-gradient(90deg,rgba(206,75,55,0.11),rgba(206,75,55,0) 78%);
   box-shadow:inset 2px 0 0 var(--ember);
@@ -151,7 +152,7 @@ html:not([data-side="fa"]) .fa-only{display:none !important}
   font-size:0.64rem;letter-spacing:0.22em;text-transform:uppercase;
   color:var(--ember);
 }
-@media (max-width:460px){ html[data-side="fa"] .count .w{display:none} }
+
 #hot{z-index:58}
 .hotgroup{
   padding:1.3rem var(--gut) 0.45rem;
@@ -919,7 +920,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
     <div class="syncmsg" id="storeMsg" style="margin-top:0"></div>
 
     <button class="act" id="projMenuBtn">Long term<span class="badge" id="projBadge"></span><small>Projects that run for months, with their own steps</small></button>
-    <button class="act fa-only" id="hotMenuBtn">Urgent<span class="badge" id="hotBadge"></span><small>What needs you first, across Fundamental</small></button>
+    <button class="act" id="hotMenuBtn">Urgent<span class="badge" id="hotBadge"></span><small>What needs you first, across Fundamental</small></button>
 
     <button class="act" id="pipeBtn">Pipeline<span class="badge" id="pipeBadge"></span><small>Everything you are waiting on, across every panel</small></button>
 
@@ -1050,7 +1051,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v18';
+const APP_VERSION = 'v19';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -1405,7 +1406,7 @@ function toggleWait(item){
 function itemRow(tab, item){
   const row = document.createElement('div');
   row.className = 'item' + (item.done ? ' done' : '') + (item.wait && !item.done ? ' waiting' : '')
-                + (isLT(item) ? ' lt' : '') + (SPACE === 'fa' && isHot(item) ? ' urgent' : '');
+                + (isLT(item) ? ' lt' : '') + (isHot(item) ? ' urgent' : '');
 
   const box = document.createElement('button');
   box.className = 'box';
@@ -1462,7 +1463,7 @@ function itemRow(tab, item){
     body.appendChild(meta);
   }
 
-  if(SPACE === 'fa' && !item.done && !lt) body.appendChild(hotMark(item));
+  if(!item.done && !lt) body.appendChild(hotMark(item));
 
   const chev = document.createElementNS('http://www.w3.org/2000/svg','svg');
   chev.setAttribute('class','chev');
@@ -1505,7 +1506,7 @@ function listInto(host, tab){
   if(!items.length){ host.appendChild(emptyBlock(tab)); return; }
 
   const open0       = items.filter(i => !i.done && !i.wait && !i.lt);
-  const activeItems = SPACE === 'fa' ? open0.filter(i => i.hot).concat(open0.filter(i => !i.hot)) : open0;
+  const activeItems = open0.filter(i => i.hot).concat(open0.filter(i => !i.hot));
   const waiting     = items.filter(i => !i.done && i.wait && !i.lt)
                            .sort((a,b) => (a.since || 0) - (b.since || 0));
   const longterm    = items.filter(i => !i.done && i.lt);
@@ -2140,14 +2141,14 @@ function closeProjects(){
   scrim.classList.remove('up');
 }
 
-/* ---------- urgent: the Fundamental side's short list ---------- */
+/* ---------- urgent: the short list for the side you are on ---------- */
 function isHot(item){ return !!item.hot && !item.done && !isLT(item); }
 function hotItems(){
   const out = [];
   TABS.forEach(tab => (data[tab] || []).forEach(item => { if(isHot(item)) out.push({ tab, item }); }));
   return out;
 }
-function totalHot(){ return SPACE === 'fa' ? hotItems().length : 0; }
+function totalHot(){ return hotItems().length; }
 function hotUp(){ const el = document.getElementById('hot'); return !!el && el.classList.contains('up'); }
 
 function hotMark(item){
