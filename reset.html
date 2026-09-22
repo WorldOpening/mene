@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#08090c">
+<title>Ledger · Check</title>
+<style>
+:root{
+  --bg:#08090c;--ink:#E7E9ED;--muted:#6E757B;--dim:#464C53;
+  --gold:#BBA37D;--ember:#D09470;--rule:rgba(187,163,125,0.28);--hair:rgba(231,233,237,0.07);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:var(--bg)}
+body{
+  font-family:'Jost',system-ui,-apple-system,'Segoe UI',sans-serif;font-weight:300;color:var(--ink);
+  max-width:34rem;margin:0 auto;
+  padding:calc(2.4rem + env(safe-area-inset-top,0px)) 1.5rem calc(2.4rem + env(safe-area-inset-bottom,0px));
+}
+h1{
+  font-family:'Cormorant Garamond',Georgia,serif;font-weight:500;
+  font-size:1.35rem;letter-spacing:0.34em;text-transform:uppercase;
+}
+.sub{margin-top:0.35rem;font-size:0.62rem;letter-spacing:0.24em;text-transform:uppercase;color:var(--muted)}
+.rows{margin-top:2rem;border-top:1px solid var(--hair)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:1rem;padding:0.95rem 0;border-bottom:1px solid var(--hair)}
+.k{font-size:0.62rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.v{font-size:0.92rem;text-align:right;color:var(--ink)}
+.v.wait{color:var(--dim)}
+.v.ok{color:var(--gold)}
+.v.bad{color:var(--ember)}
+.verdict{margin-top:1.8rem;font-size:0.95rem;line-height:1.6}
+.verdict.bad{color:var(--ember)}
+button{
+  margin-top:1.8rem;width:100%;padding:1.05rem;background:none;cursor:pointer;
+  border:1px solid var(--rule);color:var(--gold);
+  font-family:inherit;font-weight:400;font-size:0.72rem;letter-spacing:0.26em;text-transform:uppercase;
+}
+button:disabled{opacity:0.35;cursor:default}
+.note{margin-top:1rem;font-size:0.78rem;line-height:1.65;color:var(--muted)}
+a{color:var(--gold)}
+</style>
+</head>
+<body>
+<h1>Ledger</h1>
+<div class="sub">Connection check</div>
+
+<div class="rows">
+  <div class="row"><span class="k">Ledger server</span><span class="v wait" id="srv">checking</span></div>
+  <div class="row"><span class="k">Microsoft</span><span class="v wait" id="ms">checking</span></div>
+  <div class="row"><span class="k">This phone runs</span><span class="v wait" id="local">checking</span></div>
+  <div class="row"><span class="k">Your items</span><span class="v wait" id="items">checking</span></div>
+  <div class="row"><span class="k">OneDrive</span><span class="v wait" id="od">checking</span></div>
+</div>
+
+<p class="verdict" id="verdict"></p>
+
+<button id="refresh" disabled>Refresh the app</button>
+<p class="note">Your items stay exactly where they are. This clears only the phone's saved copy of the app, then opens the current one.</p>
+<p class="note"><a href="./">Back to Ledger</a></p>
+
+<script>
+const $ = id => document.getElementById(id);
+function set(id, text, cls){ const el = $(id); el.textContent = text; el.className = 'v' + (cls ? ' ' + cls : ''); }
+function timed(promise, ms, ctl){
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => { if(ctl) ctl.abort(); reject(new Error('timeout')); }, ms);
+    promise.then(v => { clearTimeout(t); resolve(v); }, e => { clearTimeout(t); reject(e); });
+  });
+}
+const secs = t0 => ((performance.now() - t0) / 1000).toFixed(1) + ' s';
+const vnum = v => parseInt(String(v || '').replace(/\D/g, ''), 10) || 0;
+
+async function checkServer(){
+  const t0 = performance.now();
+  const ctl = window.AbortController ? new AbortController() : null;
+  try{
+    const res = await timed(fetch('./index.html?ts=' + Date.now(), { cache: 'no-store', signal: ctl ? ctl.signal : undefined }), 12000, ctl);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const txt = await timed(res.text(), 12000);
+    const m = txt.match(/const APP_VERSION = '([^']+)'/);
+    const v = m ? m[1] : null;
+    set('srv', 'answered in ' + secs(t0) + (v ? ' · ' + v + ' published' : ''), 'ok');
+    return { ok: true, version: v };
+  }catch(e){
+    set('srv', e.message === 'timeout' ? 'no answer in 12 s' : 'could not connect', 'bad');
+    return { ok: false, why: e.message };
+  }
+}
+
+async function checkMicrosoft(){
+  const t0 = performance.now();
+  const ctl = window.AbortController ? new AbortController() : null;
+  try{
+    await timed(fetch('https://graph.microsoft.com/v1.0/?ts=' + Date.now(), { mode: 'no-cors', cache: 'no-store', signal: ctl ? ctl.signal : undefined }), 12000, ctl);
+    set('ms', 'answered in ' + secs(t0), 'ok');
+    return true;
+  }catch(e){
+    set('ms', e.message === 'timeout' ? 'no answer in 12 s' : 'could not connect', 'bad');
+    return false;
+  }
+}
+
+async function checkLocal(){
+  const found = new Set();
+  try{
+    if(window.caches){
+      for(const k of await caches.keys()){
+        if(!k.startsWith('ledger')) continue;
+        const c = await caches.open(k);
+        for(const req of await c.keys()){
+          if(!/\/(index\.html)?$/.test(new URL(req.url).pathname)) continue;
+          const hit = await c.match(req);
+          const m = hit ? (await hit.text()).match(/const APP_VERSION = '([^']+)'/) : null;
+          if(m) found.add(m[1]);
+        }
+      }
+    }
+  }catch(e){}
+  const list = [...found].sort((a, b) => vnum(b) - vnum(a));
+  set('local', list.length ? list.join(', ') + ' (saved copy)' : 'no saved copy', list.length ? '' : 'wait');
+  return list.length ? list[0] : null;
+}
+
+function checkData(){
+  try{
+    const raw = JSON.parse(localStorage.getItem('ledger.v1') || '{}');
+    const n = Object.values(raw).reduce((a, l) => a + (Array.isArray(l) ? l.length : 0), 0);
+    set('items', n + ' on this phone', n ? '' : 'wait');
+  }catch(e){ set('items', 'could not read', 'bad'); }
+  try{
+    const tok = JSON.parse(localStorage.getItem('ledger.v1.ms') || 'null');
+    const at = +localStorage.getItem('ledger.v1.ms.savedAt') || 0;
+    if(tok && (tok.rt || tok.refresh)){
+      if(at){
+        const d = new Date(at), p = n => String(n).padStart(2, '0');
+        const today = new Date().toDateString() === d.toDateString();
+        set('od', 'backed up ' + (today ? '' : d.getDate() + '/' + (d.getMonth() + 1) + ' ') + p(d.getHours()) + ':' + p(d.getMinutes()), 'ok');
+      }else set('od', 'connected', 'ok');
+      return true;
+    }
+    set('od', 'not connected', 'bad');
+    return false;
+  }catch(e){ set('od', 'could not read', 'bad'); return false; }
+}
+
+(async function run(){
+  const backedUp = checkData();
+  const [srv, ms, local] = await Promise.all([checkServer(), checkMicrosoft(), checkLocal()]);
+  const v = $('verdict');
+  const btn = $('refresh');
+  if(!srv.ok){
+    v.className = 'verdict bad';
+    v.textContent = ms
+      ? 'This phone reaches Microsoft but not the Ledger server, so something on the phone is filtering it. Pause whatever puts the key icon in your status bar (Samsung Secure Wi-Fi, a VPN, a DNS or ad-blocking app), or switch between Wi-Fi and mobile data, then open this page again.'
+      : 'This phone is not reaching the internet reliably right now. Try again on a different connection.';
+    btn.disabled = true;
+    return;
+  }
+  if(local && srv.version && vnum(local) >= vnum(srv.version)){
+    v.textContent = 'Everything is current. The phone is running the published version.';
+  }else{
+    v.textContent = 'The server is fine and ' + (srv.version || 'a newer version') + ' is waiting. The phone is holding ' +
+      (local ? local : 'an old copy') + '. Refresh below to switch.';
+  }
+  if(!backedUp) v.textContent += ' OneDrive is not connected yet, so your items live only on this phone.';
+  btn.disabled = false;
+})();
+
+$('refresh').onclick = async () => {
+  const btn = $('refresh');
+  btn.disabled = true;
+  btn.textContent = 'Refreshing';
+  try{
+    if(navigator.serviceWorker && navigator.serviceWorker.getRegistrations){
+      for(const r of await navigator.serviceWorker.getRegistrations()){
+        if(new URL(r.scope).pathname.startsWith(new URL('./', location.href).pathname)) await r.unregister();
+      }
+    }
+    if(window.caches){
+      for(const k of await caches.keys()) if(k.startsWith('ledger')) await caches.delete(k);
+    }
+  }catch(e){}
+  location.replace('./?fresh=' + Date.now());
+};
+</script>
+</body>
+</html>

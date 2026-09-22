@@ -1,4 +1,4 @@
-const CACHE = 'ledger-v15';
+const CACHE = 'ledger-v16';
 
 const ASSETS = [
   './',
@@ -56,6 +56,8 @@ function isApi(req) {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  /* the connection check must always come from the network, never a saved copy */
+  if (new URL(e.request.url).pathname.endsWith('/reset.html')) return;
   if (isApi(e.request)) return;
 
   if (isVersionProbe(e.request)) {
