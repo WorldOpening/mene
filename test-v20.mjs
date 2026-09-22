@@ -55,14 +55,15 @@ function graph(cloud) {
   const { w, d, errors, g, calls } = boot({ store: v10store });
   ok('boots clean', errors.length === 0);
   ok('opens on General', d.documentElement.getAttribute('data-side') === 'gen');
-  ok('the seal shows G', d.getElementById('sideLetter').textContent === 'G');
+  ok('the seal shows G lit', d.querySelector('#sideRing i.on').dataset.side === 'gen');
+  ok('all three letters ride the seal', [...d.querySelectorAll('#sideRing i')].map(i => i.textContent).join('') === 'FBG');
+  ok('exactly one is lit', d.querySelectorAll('#sideRing i.on').length === 1);
   const body = d.body.textContent;
   ok('General shows its panels', /Lumina/.test(d.getElementById('navwrap').textContent) && /Personal/.test(d.getElementById('navwrap').textContent));
   ok('Fundamental panel is not on General', !/Fundamental/.test(d.getElementById('navwrap').textContent));
   ok('Fundamental items hidden on General', !body.includes('Call the broker'));
   ok('no switch row under the masthead', !d.getElementById('sides'));
   ok('the seal offers Fundamental next', /Showing General\. Switch to Fundamental/.test(d.getElementById('sideBtn').getAttribute('aria-label')));
-  ok('the letter sits on the seal', d.querySelector('#sideBtn .sideF').textContent === 'G');
   w.save();
   const tabs = JSON.parse(w.localStorage.getItem('ledger.v1.tabs'));
   const spaces = JSON.parse(w.localStorage.getItem('ledger.v1.spaces'));
@@ -267,5 +268,39 @@ function graph(cloud) {
   ok('a current app says it is the latest', /already the latest/.test(d.getElementById('updSub').textContent));
 }
 
-console.log('\n=== v19: ' + pass + ' passed, ' + fail + ' failed');
+
+/* ---------- 13. the seal cycles all three sides ---------- */
+{
+  const lists = { Fundamental:[item('f','IC memo')], BGIP:[item('b','Fund docs')], Personal:[item('p','Renew visa')] };
+  const { w, d, g } = boot({ store: { 'ledger.v1': JSON.stringify(lists), 'ledger.v1.tabs': JSON.stringify(['Fundamental','BGIP','Personal']) } });
+  const side = () => d.documentElement.getAttribute('data-side');
+  const lit  = () => { const on = d.querySelector('#sideRing i.on'); return on ? on.textContent : ''; };
+  ok('BGIP lands on Babylon by name', g('SPACEMAP.BGIP') === 'bg');
+  ok('Personal lands on General', g('SPACEMAP.Personal') === 'gen');
+  ok('opens on General with G lit', side() === 'gen' && lit() === 'G');
+  d.getElementById('sideBtn').click();
+  ok('one tap: Fundamental, F lit', side() === 'fa' && lit() === 'F' && d.body.textContent.includes('IC memo'));
+  d.getElementById('sideBtn').click();
+  ok('two taps: Babylon, B lit', side() === 'bg' && lit() === 'B' && d.body.textContent.includes('Fund docs'));
+  ok('Babylon shows only its own', !d.body.textContent.includes('IC memo') && !d.body.textContent.includes('Renew visa'));
+  d.getElementById('sideBtn').click();
+  ok('three taps: back to General', side() === 'gen' && lit() === 'G' && d.body.textContent.includes('Renew visa'));
+  ok('the side is remembered', w.localStorage.getItem('ledger.v1.side') === 'gen');
+  ok('urgent marks on this side too', d.querySelectorAll('#stage .item .hot').length === 1);
+  d.getElementById('sideBtn').click();
+  g("moveSide(0)");
+  ok('the last panel on a side cannot leave', g('SPACEMAP.Fundamental') === 'fa');
+  w.addTab('Aviation');
+  g("moveSide(TABS.indexOf('Aviation'))");
+  ok('a panel moves to the next side with its items', g('SPACEMAP.Aviation') === 'bg' && g("ALL.includes('Aviation')"));
+  ok('the side it left still has a panel', g("ALL.filter(t => spaceOf(t) === 'fa').length") === 1);
+}
+
+/* ---------- 14. an empty ledger still has all three sides ---------- */
+{
+  const { g } = boot({ store: {} });
+  ok('three sides exist from nothing', ['fa','bg','gen'].every(x => g(`ALL.filter(t => spaceOf(t) === '${x}').length`) >= 1));
+}
+
+console.log('\n=== v20: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
