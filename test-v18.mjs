@@ -54,20 +54,21 @@ function graph(cloud) {
 {
   const { w, d, errors, g, calls } = boot({ store: v10store });
   ok('boots clean', errors.length === 0);
-  ok('opens on Own', d.documentElement.getAttribute('data-side') === 'own');
+  ok('opens on General', d.documentElement.getAttribute('data-side') === 'gen');
+  ok('the seal shows G', d.getElementById('sideLetter').textContent === 'G');
   const body = d.body.textContent;
-  ok('Own shows Own panels', /Lumina/.test(d.getElementById('navwrap').textContent) && /Personal/.test(d.getElementById('navwrap').textContent));
-  ok('Fundamental panel is not on Own', !/Fundamental/.test(d.getElementById('navwrap').textContent));
-  ok('Fundamental items hidden on Own', !body.includes('Call the broker'));
+  ok('General shows its panels', /Lumina/.test(d.getElementById('navwrap').textContent) && /Personal/.test(d.getElementById('navwrap').textContent));
+  ok('Fundamental panel is not on General', !/Fundamental/.test(d.getElementById('navwrap').textContent));
+  ok('Fundamental items hidden on General', !body.includes('Call the broker'));
   ok('no switch row under the masthead', !d.getElementById('sides'));
-  ok('the seal offers Fundamental', d.getElementById('sideBtn').getAttribute('aria-label') === 'Switch to Fundamental');
-  ok('the F sits on the seal', d.querySelector('#sideBtn .sideF').textContent === 'F');
+  ok('the seal offers Fundamental next', /Showing General\. Switch to Fundamental/.test(d.getElementById('sideBtn').getAttribute('aria-label')));
+  ok('the letter sits on the seal', d.querySelector('#sideBtn .sideF').textContent === 'G');
   w.save();
   const tabs = JSON.parse(w.localStorage.getItem('ledger.v1.tabs'));
   const spaces = JSON.parse(w.localStorage.getItem('ledger.v1.spaces'));
-  ok('saved panel list still holds both sides', tabs.length === 3 && tabs.includes('Fundamental'));
+  ok('saved panel list holds every side', tabs.length === 4 && tabs.includes('Fundamental') && tabs.includes('Babylon'));
   ok('Fundamental panel migrated to the Fundamental side', spaces.Fundamental === 'fa');
-  ok('everything else migrated to Own', spaces.Lumina === 'own' && spaces.Personal === 'own');
+  ok('everything else migrated to General', spaces.Lumina === 'gen' && spaces.Personal === 'gen');
   const stored = w.localStorage.getItem('ledger.v1');
   ok('every item survived', ['Call the broker','Fund launch','Draft memo','Renew visa'].every(t => stored.includes(t)));
 
@@ -75,36 +76,37 @@ function graph(cloud) {
   d.getElementById('sideBtn').click();
   ok('switch flips the palette', d.documentElement.getAttribute('data-side') === 'fa');
   ok('Fundamental items now showing', d.body.textContent.includes('Call the broker'));
-  ok('Own items now hidden', !d.body.textContent.includes('Draft memo'));
+  ok('General items now hidden', !d.body.textContent.includes('Draft memo'));
   ok('long-term board scoped to Fundamental', g('projectsEverywhere().live.length') === 1);
   ok('waiting scoped to Fundamental', g('totalWaiting()') === 0);
   ok('side remembered', w.localStorage.getItem('ledger.v1.side') === 'fa');
-  ok('the seal now offers Own', d.getElementById('sideBtn').getAttribute('aria-label') === 'Switch to Own');
+  ok('the seal now offers Babylon', /Switch to Babylon/.test(d.getElementById('sideBtn').getAttribute('aria-label')));
   ok('a switch writes nothing to the cloud', calls.length === 0);
-  d.getElementById('sideBtn').click();
-  ok('long-term board empty on Own', g('projectsEverywhere().live.length') === 0);
-  ok('waiting on Own', g('totalWaiting()') === 1);
+  d.getElementById('sideBtn').click();   // Fundamental -> Babylon
+  d.getElementById('sideBtn').click();   // Babylon -> General
+  ok('long-term board empty on General', g('projectsEverywhere().live.length') === 0);
+  ok('waiting on General', g('totalWaiting()') === 1);
   d.getElementById('sideBtn').click();
 
   /* ---------- 3. panels ---------- */
   ok('a name used on the other side is refused', w.addTab('Personal') === false);
   ok('a new Fundamental panel', w.addTab('Aviation') === true && g("SPACEMAP.Aviation") === 'fa');
-  ok('Fundamental now has two panels', g('TABS.length') === 2 && g('ALL.length') === 4);
+  ok('Fundamental now has two panels', g('TABS.length') === 2 && g("ALL.filter(t => spaceOf(t) === 'fa').length") === 2);
   g("renameTab(TABS.indexOf('Aviation'), 'Lumina')");
   ok('rename into a name from the other side is refused', g("TABS.includes('Aviation')"));
   g("moveSide(TABS.indexOf('Aviation'))");
-  ok('panel crossed to Own', g("SPACEMAP.Aviation") === 'own' && !g("TABS.includes('Aviation')") && g("ALL.includes('Aviation')"));
+  ok('panel crossed to the next side', g("SPACEMAP.Aviation") === 'bg' && !g("TABS.includes('Aviation')") && g("ALL.includes('Aviation')"));
   g('moveSide(0)');
   ok('the last panel on a side cannot leave', g("TABS.includes('Fundamental')") && g("SPACEMAP.Fundamental") === 'fa');
   g("renameTab(0, 'FA Work')");
   ok('rename keeps side and items', g("SPACEMAP['FA Work']") === 'fa' && g("data['FA Work'].length") === 2 && g("SPACEMAP.Fundamental") === undefined);
   const tabs2 = JSON.parse(w.localStorage.getItem('ledger.v1.tabs'));
-  ok('saved list holds every panel from both sides', ['FA Work','Lumina','Personal','Aviation'].every(t => tabs2.includes(t)));
+  ok('saved list holds every panel from every side', ['FA Work','Lumina','Personal','Aviation'].every(t => tabs2.includes(t)));
 }
 
 /* ---------- 4. reopening lands on the side you left ---------- */
 {
-  const { d } = boot({ store: { ...v10store, 'ledger.v1.side': 'fa', 'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Lumina:'own', Personal:'own' }) } });
+  const { d } = boot({ store: { ...v10store, 'ledger.v1.side': 'fa', 'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Lumina:'gen', Personal:'gen' }) } });
   ok('reopens on Fundamental', d.documentElement.getAttribute('data-side') === 'fa' && d.body.textContent.includes('Call the broker'));
 }
 
@@ -122,7 +124,7 @@ function graph(cloud) {
   ok('restore applies the saved sides', ok1 && g('SPACEMAP.Lumina') === 'fa' && g('SPACEMAP.Fundamental') === 'fa');
   const { g: g2 } = boot({ store: v10store });
   g2(`adoptLists(${JSON.stringify(items)}, ['Fundamental','Lumina','Personal'], null)`);
-  ok('a v10 backup restores with Fundamental on its own side', g2('SPACEMAP.Fundamental') === 'fa' && g2('SPACEMAP.Lumina') === 'own');
+  ok('a v10 backup restores with Fundamental on its own side', g2('SPACEMAP.Fundamental') === 'fa' && g2('SPACEMAP.Lumina') === 'gen');
 }
 
 /* ---------- 7. OneDrive: the write carries the sides ---------- */
@@ -134,7 +136,7 @@ function graph(cloud) {
   ok('device ahead is pushed', !!put);
   const body = put ? JSON.parse(put[2]) : {};
   ok('pushed copy records the sides', body.spaces && body.spaces.Fundamental === 'fa');
-  ok('pushed copy holds both sides', body.order && body.order.length === 3);
+  ok('pushed copy holds every side', body.order && body.order.length >= 3 && body.spaces.Babylon === 'bg');
   ok('dated copy written', calls.some(c => c[0] === 'PUT' && /backups\/ledger-\d{4}-\d{2}-\d{2}\.json/.test(c[1])));
   ok('stale copy did not overwrite', !w.localStorage.getItem('ledger.v1').includes('stale cloud item'));
 }
@@ -145,7 +147,7 @@ function graph(cloud) {
   const stale = { __ledger:1, v:6, savedAt:1, order:['Personal'], lists:{ Personal:[item('z','stale cloud item')] } };
   const store = signedIn({
     'ledger.v1': JSON.stringify(lists), 'ledger.v1.tabs': JSON.stringify(['Fundamental','Personal']),
-    'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Personal:'own' }), 'ledger.v1.side': 'own',
+    'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Personal:'gen' }), 'ledger.v1.side': 'gen',
     'ledger.v1.ms.savedAt': String(Date.now()),
   });
   const { w } = boot({ store, fetchImpl: graph(stale) });
@@ -155,13 +157,13 @@ function graph(cloud) {
 
 /* ---------- 9. wiped browser recovers both sides ---------- */
 {
-  const cloud = { __ledger:1, v:6, savedAt: Date.now(), order:['Fundamental','Personal'], spaces:{ Fundamental:'fa', Personal:'own' },
+  const cloud = { __ledger:1, v:6, savedAt: Date.now(), order:['Fundamental','Personal'], spaces:{ Fundamental:'fa', Personal:'gen' },
                   lists:{ Fundamental:[item('r','recovered FA item')], Personal:[item('p','recovered own item')] } };
   const { w, g } = boot({ store: { 'ledger.v1.ms': JSON.stringify({ rt:'RT', at:'AT', exp: Date.now()+6e5, folder:'Ledger' }) }, fetchImpl: graph(cloud) });
   await wait(600);
   const s = w.localStorage.getItem('ledger.v1');
   ok('wiped browser recovers both sides', s.includes('recovered FA item') && s.includes('recovered own item'));
-  ok('and the split comes back with it', g('SPACEMAP.Fundamental') === 'fa' && g('SPACEMAP.Personal') === 'own');
+  ok('and the split comes back with it', g('SPACEMAP.Fundamental') === 'fa' && g('SPACEMAP.Personal') === 'gen');
 }
 
 /* ---------- 10. a newer OneDrive copy still wins ---------- */
@@ -182,14 +184,14 @@ function graph(cloud) {
     Personal:    [ item('o','Renew visa', { hot:true }) ],
   };
   const store = { 'ledger.v1': JSON.stringify(lists), 'ledger.v1.tabs': JSON.stringify(['Fundamental','Aviation','Personal']),
-                  'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Aviation:'fa', Personal:'own' }), 'ledger.v1.tab.fa': 'Fundamental' };
+                  'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Aviation:'fa', Personal:'gen' }), 'ledger.v1.tab.fa': 'Fundamental' };
   const { w, d, g } = boot({ store });
   const titles = () => [...d.querySelectorAll('#stage .item .txt')].map(t => t.textContent);
   const saved = id => { const L = JSON.parse(w.localStorage.getItem('ledger.v1')); for (const k in L) { const f = L[k].find(i => i.id === id); if (f) return f; } };
 
-  ok('Own has no urgent marks', d.querySelectorAll('.hot').length === 0);
-  ok('a flag on an Own item does not light it', d.querySelectorAll('.item.urgent').length === 0);
-  ok('Own masthead shows no urgent count', !d.querySelector('.hotlink'));
+  ok('General has no urgent marks', d.querySelectorAll('.hot').length === 0);
+  ok('a flag on a General item does not light it', d.querySelectorAll('.item.urgent').length === 0);
+  ok('General masthead shows no urgent count', !d.querySelector('.hotlink'));
 
   d.getElementById('sideBtn').click();
   ok('open Fundamental items get the diamond, done and long-term do not', d.querySelectorAll('#stage .item .hot').length === 3);
@@ -213,7 +215,7 @@ function graph(cloud) {
   const hotTitles = [...d.querySelectorAll('#hotbody .item .txt')].map(t => t.textContent);
   ok('it gathers urgent items across Fundamental panels', JSON.stringify(hotTitles) === JSON.stringify(['IC memo','Engine audit']));
   ok('grouped by panel when there is more than one', [...d.querySelectorAll('#hotbody .hotgroup')].map(h => h.textContent).join(',') === 'Fundamental,Aviation');
-  ok('Own items never appear in it', !d.getElementById('hotbody').textContent.includes('Renew visa'));
+  ok('items from other sides never appear in it', !d.getElementById('hotbody').textContent.includes('Renew visa'));
 
   /* finishing one from the urgent list */
   [...d.querySelectorAll('#hotbody .item')].find(r => r.textContent.includes('Engine audit')).querySelector('.box').click();
@@ -230,7 +232,7 @@ function graph(cloud) {
   g("data.Fundamental[0].hot = true; save(); render();");
   d.querySelector('.hotlink').click();
   d.getElementById('sideBtn').click();
-  ok('switching to Own closes the urgent list', !d.getElementById('hot').classList.contains('up'));
+  ok('switching side closes the urgent list', !d.getElementById('hot').classList.contains('up'));
   ok('and hides the urgent count', !d.querySelector('.hotlink'));
   ok('the flag rides along in the saved ledger', w.localStorage.getItem('ledger.v1').includes('"hot":true'));
   ok('no date slots left over', d.querySelectorAll('.due').length === 0 && !d.getElementById('dues'));
@@ -265,5 +267,5 @@ function graph(cloud) {
   ok('a current app says it is the latest', /already the latest/.test(d.getElementById('updSub').textContent));
 }
 
-console.log('\n=== v17: ' + pass + ' passed, ' + fail + ' failed');
+console.log('\n=== v18: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
