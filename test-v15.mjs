@@ -236,5 +236,34 @@ function graph(cloud) {
   ok('no date slots left over', d.querySelectorAll('.due').length === 0 && !d.getElementById('dues'));
 }
 
-console.log('\n=== v14: ' + pass + ' passed, ' + fail + ' failed');
+
+/* ---------- 12. the update check never hangs ---------- */
+{
+  const { w, d, g } = boot({ store: v10store, fetchImpl: () => new Promise(() => {}) });
+  let outcome = 'pending';
+  w.eval("withTimeout(new Promise(() => {}), 60)").then(() => { outcome = 'resolved'; }, e => { outcome = e.message; });
+  await wait(150);
+  ok('a request that never answers times out', outcome === 'timeout');
+  let fast = null;
+  w.eval("withTimeout(Promise.resolve(7), 60)").then(v => { fast = v; });
+  await wait(20);
+  ok('a quick answer passes straight through', fast === 7);
+  d.getElementById('updBtn').click();
+  ok('the check says it is checking', /Checking/.test(d.getElementById('updSub').textContent));
+}
+{
+  const { d } = boot({ store: v10store, fetchImpl: () => Promise.reject(new Error('offline')) });
+  d.getElementById('updBtn').click();
+  await wait(50);
+  ok('offline says so rather than spinning', /Could not check/.test(d.getElementById('updSub').textContent));
+}
+{
+  const html2 = fs.readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+  const { d } = boot({ store: v10store, fetchImpl: () => Promise.resolve({ ok:true, status:200, text: async () => html2 }) });
+  d.getElementById('updBtn').click();
+  await wait(50);
+  ok('a current app says it is the latest', /already the latest/.test(d.getElementById('updSub').textContent));
+}
+
+console.log('\n=== v15: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

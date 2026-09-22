@@ -1,4 +1,4 @@
-const CACHE = 'ledger-v14';
+const CACHE = 'ledger-v15';
 
 const ASSETS = [
   './',
@@ -64,16 +64,23 @@ self.addEventListener('fetch', e => {
   }
 
   if (isShell(e.request)) {
+    /* Network first, but a stalled connection gets five seconds before the
+       cached copy opens instead. The network fetch keeps going in the
+       background and refreshes the cache, so the next open is current. */
+    const net = fetch(e.request, { cache: 'no-store' }).then(res => {
+      if (res && res.status === 200) {
+        const copy = res.clone();
+        return caches.open(CACHE).then(c => c.put(e.request, copy)).then(() => res, () => res);
+      }
+      return res;
+    });
+    e.waitUntil(net.catch(() => {}));
+    const cached = () => caches.match(e.request).then(hit => hit || caches.match('./index.html'));
     e.respondWith(
-      fetch(e.request, { cache: 'no-store' })
-        .then(res => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(CACHE).then(c => c.put(e.request, copy));
-          }
-          return res;
-        })
-        .catch(() => caches.match(e.request).then(hit => hit || caches.match('./index.html')))
+      Promise.race([
+        net.catch(() => null),
+        new Promise(r => setTimeout(() => r(null), 5000)),
+      ]).then(res => res || cached().then(hit => hit || net))
     );
     return;
   }
