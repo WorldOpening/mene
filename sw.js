@@ -1,8 +1,7 @@
-const CACHE = 'ledger-v16';
+const CACHE = 'ledger-v17';
 
 const ASSETS = [
   './',
-  './index.html',
   './manifest.json',
   'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&family=Jost:wght@300;400;500&display=swap'
 ];
@@ -11,7 +10,7 @@ const ASSETS = [
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => c.addAll(ASSETS).catch(() => c.addAll(['./', './index.html'])))
+      .then(c => c.addAll(ASSETS).catch(() => c.addAll(['./'])))
       .then(() => self.skipWaiting())
   );
 });
@@ -57,7 +56,8 @@ function isApi(req) {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   /* the connection check must always come from the network, never a saved copy */
-  if (new URL(e.request.url).pathname.endsWith('/reset.html')) return;
+  const path = new URL(e.request.url).pathname;
+  if (path.endsWith('/reset.html') || path.endsWith('/reset')) return;
   if (isApi(e.request)) return;
 
   if (isVersionProbe(e.request)) {
@@ -77,7 +77,7 @@ self.addEventListener('fetch', e => {
       return res;
     });
     e.waitUntil(net.catch(() => {}));
-    const cached = () => caches.match(e.request).then(hit => hit || caches.match('./index.html'));
+    const cached = () => caches.match(e.request).then(hit => hit || caches.match('./'));
     e.respondWith(
       Promise.race([
         net.catch(() => null),
@@ -104,7 +104,7 @@ self.addEventListener('fetch', e => {
           caches.open(CACHE).then(c => c.put(e.request, copy));
         }
         return res;
-      }).catch(() => caches.match('./index.html'));
+      }).catch(() => caches.match('./'));
     })
   );
 });

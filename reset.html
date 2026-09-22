@@ -75,7 +75,7 @@ async function checkServer(){
   const t0 = performance.now();
   const ctl = window.AbortController ? new AbortController() : null;
   try{
-    const res = await timed(fetch('./index.html?ts=' + Date.now(), { cache: 'no-store', signal: ctl ? ctl.signal : undefined }), 12000, ctl);
+    const res = await timed(fetch('./?ts=' + Date.now(), { cache: 'no-store', signal: ctl ? ctl.signal : undefined }), 12000, ctl);
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const txt = await timed(res.text(), 12000);
     const m = txt.match(/const APP_VERSION = '([^']+)'/);

@@ -1042,7 +1042,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v16';
+const APP_VERSION = 'v17';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -3326,7 +3326,7 @@ document.getElementById('updBtn').onclick = async () => {
   try{
     const ctl = window.AbortController ? new AbortController() : null;
     const res = await withTimeout(
-      fetch('./index.html?ts=' + Date.now(), { cache: 'no-store', signal: ctl ? ctl.signal : undefined }), 12000, ctl);
+      fetch('./?ts=' + Date.now(), { cache: 'no-store', signal: ctl ? ctl.signal : undefined }), 12000, ctl);
     if(!res.ok) throw new Error('http');
     const txt = await withTimeout(res.text(), 12000);
     const m = txt.match(/const APP_VERSION = '([^']+)'/);

@@ -265,5 +265,5 @@ function graph(cloud) {
   ok('a current app says it is the latest', /already the latest/.test(d.getElementById('updSub').textContent));
 }
 
-console.log('\n=== v16: ' + pass + ' passed, ' + fail + ' failed');
+console.log('\n=== v17: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
