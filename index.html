@@ -147,12 +147,21 @@ header .wrap > .mastbtn, header .wrap > .menu{flex-shrink:0}
   box-shadow:inset 2px 0 0 var(--ember);
 }
 .item.urgent .txt{color:#F6E3DC}
-.item.urgent .hot i{background:var(--ember);border-color:var(--ember);opacity:1;animation:ember 3s ease-in-out infinite}
+.item.urgent .hot i,
+.pcard.urgent .hot i{background:var(--ember);border-color:var(--ember);opacity:1;animation:ember 3s ease-in-out infinite}
 @keyframes ember{
   0%,100%{box-shadow:0 0 0 0 rgba(206,75,55,0)}
   50%{box-shadow:0 0 9px 1px rgba(206,75,55,0.6)}
 }
-@media (prefers-reduced-motion:reduce){ .item.urgent .hot i{animation:none} }
+@media (prefers-reduced-motion:reduce){ .item.urgent .hot i, .pcard.urgent .hot i{animation:none} }
+.pcard.urgent{
+  background:linear-gradient(90deg,rgba(206,75,55,0.10),rgba(206,75,55,0) 78%);
+  box-shadow:inset 2px 0 0 var(--ember);
+}
+.pcard.urgent .ptxt{color:#F6E3DC}
+.pcard .ptop{display:flex;align-items:center;gap:0.6rem}
+.pcard .ptop .hot{width:1.1rem;padding:6px 0;margin:-6px -0.2rem -6px 0.1rem}
+.tierrule.hasurgent .tn{color:var(--ember)}
 .hotlink{
   background:none;border:none;cursor:pointer;padding:0;
   font-family:'Jost',sans-serif;font-weight:400;
@@ -1060,7 +1069,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v20';
+const APP_VERSION = 'v21';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -1472,7 +1481,7 @@ function itemRow(tab, item){
     body.appendChild(meta);
   }
 
-  if(!item.done && !lt) body.appendChild(hotMark(item));
+  if(!item.done) body.appendChild(hotMark(item));
 
   const chev = document.createElementNS('http://www.w3.org/2000/svg','svg');
   chev.setAttribute('class','chev');
@@ -1518,7 +1527,8 @@ function listInto(host, tab){
   const activeItems = open0.filter(i => i.hot).concat(open0.filter(i => !i.hot));
   const waiting     = items.filter(i => !i.done && i.wait && !i.lt)
                            .sort((a,b) => (a.since || 0) - (b.since || 0));
-  const longterm    = items.filter(i => !i.done && i.lt);
+  const longterm0   = items.filter(i => !i.done && i.lt);
+  const longterm    = longterm0.filter(i => i.hot).concat(longterm0.filter(i => !i.hot));
   const doneItems   = items.filter(i => i.done);
 
   activeItems.forEach(i => host.appendChild(itemRow(tab, i)));
@@ -1532,7 +1542,7 @@ function listInto(host, tab){
 
   if(longterm.length){
     const open = ltOpenFor(tab);
-    host.appendChild(ltRule(tab, longterm.length, open));
+    host.appendChild(ltRule(tab, longterm.length, open, longterm.filter(isHot).length));
     if(open) longterm.forEach(i => host.appendChild(itemRow(tab, i)));
   }
 
@@ -1544,15 +1554,15 @@ function listInto(host, tab){
 function ltOpenFor(tab){
   return UI.ltOpen[tab] === true;
 }
-function ltRule(tab, n, open){
+function ltRule(tab, n, open, hot){
   const b = document.createElement('button');
-  b.className = 'tierrule longterm' + (open ? '' : ' shut');
+  b.className = 'tierrule longterm' + (open ? '' : ' shut') + (hot ? ' hasurgent' : '');
   b.setAttribute('aria-expanded', open ? 'true' : 'false');
   const label = document.createElement('span');
   label.textContent = 'Long term';
   const num = document.createElement('span');
   num.className = 'tn';
-  num.textContent = String(n);
+  num.textContent = hot ? n + ' \u00b7 ' + hot + ' urgent' : String(n);
   const line = document.createElement('span');
   line.className = 'tl';
   const wedge = document.createElement('span');
@@ -2135,7 +2145,7 @@ function projectsEverywhere(){
       (item.done ? closed : live).push({tab, item});
     });
   });
-  return {live, closed};
+  return { live: live.filter(r => r.item.hot).concat(live.filter(r => !r.item.hot)), closed };
 }
 
 function openProjects(){
@@ -2151,7 +2161,7 @@ function closeProjects(){
 }
 
 /* ---------- urgent: the short list for the side you are on ---------- */
-function isHot(item){ return !!item.hot && !item.done && !isLT(item); }
+function isHot(item){ return !!item.hot && !item.done; }
 function hotItems(){
   const out = [];
   TABS.forEach(tab => (data[tab] || []).forEach(item => { if(isHot(item)) out.push({ tab, item }); }));
@@ -2170,6 +2180,8 @@ function hotMark(item){
     e.stopPropagation();
     if(item.hot) delete item.hot; else item.hot = true;
     save(); render();
+    if(proj.classList.contains('up')) renderProjects();
+    if(hotUp()) renderHot();
   };
   return b;
 }
@@ -2263,7 +2275,7 @@ function renderProjects(){
 
 function projectCard(tab, item){
   const card = document.createElement('div');
-  card.className = 'pcard' + (item.done ? ' shut' : '');
+  card.className = 'pcard' + (item.done ? ' shut' : '') + (isHot(item) ? ' urgent' : '');
   card.onclick = () => openProject(tab, item, true);
 
   const top = document.createElement('div');
@@ -2277,6 +2289,7 @@ function projectCard(tab, item){
   fr.className = 'page';
   fr.textContent = st.total ? st.done + '/' + st.total : 'no steps yet';
   top.appendChild(fr);
+  if(!item.done) top.appendChild(hotMark(item));
   card.appendChild(top);
 
   const txt = document.createElement('div');

@@ -302,5 +302,51 @@ function graph(cloud) {
   ok('three sides exist from nothing', ['fa','bg','gen'].every(x => g(`ALL.filter(t => spaceOf(t) === '${x}').length`) >= 1));
 }
 
-console.log('\n=== v20: ' + pass + ' passed, ' + fail + ' failed');
+
+/* ---------- 15. a long-term project can be urgent ---------- */
+{
+  const lists = {
+    Fundamental: [ item('a','Railcar comps'),
+                   item('p','Aviation handover', { lt:true, steps:[{ t:'List positions', done:true, subs:[] }, { t:'Brief successor', done:false, subs:[] }] }),
+                   item('q','Fleet review', { lt:true, steps:[] }) ],
+    Personal:    [ item('z','Renew visa') ],
+  };
+  const store = { 'ledger.v1': JSON.stringify(lists), 'ledger.v1.tabs': JSON.stringify(['Fundamental','Personal']),
+                  'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Personal:'gen' }), 'ledger.v1.side': 'fa',
+                  'ledger.v1.ui': JSON.stringify({ waitOpen:{}, ltOpen:{ Fundamental:true } }) };
+  const { w, d, g } = boot({ store });
+  const saved = id => JSON.parse(w.localStorage.getItem('ledger.v1')).Fundamental.find(i => i.id === id);
+  const rowFor = t => [...d.querySelectorAll('#stage .item')].find(r => r.textContent.includes(t));
+
+  ok('a long-term row carries the diamond', !!rowFor('Aviation handover').querySelector('.hot'));
+  rowFor('Aviation handover').querySelector('.hot').click();
+  ok('marking a project urgent sticks', saved('p').hot === true);
+  ok('the project row lights up', rowFor('Aviation handover').classList.contains('urgent'));
+  ok('it counts in the masthead', /^1/.test(d.querySelector('.hotlink').textContent));
+  ok('it rises above the other project', [...d.querySelectorAll('#stage .item.lt .txt')].map(t => t.textContent)[0] === 'Aviation handover');
+
+  /* folded away, the divider still says something urgent is under it */
+  g("UI.ltOpen.Fundamental = false; saveUI(); render();");
+  const rule = d.querySelector('.tierrule.longterm');
+  ok('the folded divider flags it', rule.classList.contains('hasurgent') && /urgent/.test(rule.textContent));
+
+  /* the urgent list gathers projects alongside quick items */
+  d.querySelector('.hotlink').click();
+  ok('the project appears in the urgent list', d.getElementById('hotbody').textContent.includes('Aviation handover'));
+  d.getElementById('hotBack').click();
+
+  /* and the long-term board */
+  d.getElementById('projBtn').click();
+  const cards = [...d.querySelectorAll('#projbody .pcard')];
+  ok('the urgent project leads the board', cards[0].textContent.includes('Aviation handover'));
+  ok('its card is lit', cards[0].classList.contains('urgent'));
+  ok('the other card is not', !cards[1].classList.contains('urgent'));
+  ok('the card carries its own diamond', !!cards[0].querySelector('.hot'));
+  cards[0].querySelector('.hot').click();
+  ok('lowering it from the board works', saved('p').hot === undefined);
+  ok('the board redraws at once', !d.querySelector('#projbody .pcard.urgent'));
+  ok('and the masthead count clears', !d.querySelector('.hotlink'));
+}
+
+console.log('\n=== v21: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
