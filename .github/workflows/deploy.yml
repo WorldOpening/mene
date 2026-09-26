@@ -1,0 +1,66 @@
+# The only route to the live site. Every push to main publishes Ledger to the
+# Cloudflare Pages project "ledger" (https://ledger-80o.pages.dev), labelled with the
+# commit it came from. No secret lives in this repository: the job asks GitHub for a
+# short-lived identity token and trades it at the GravityLine deploy relay, which
+# answers only this workflow, on main, in this repository, and only for this app's
+# Pages project. See DEPLOY.md.
+name: Deploy to Cloudflare Pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SITE: site
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch deploy credentials from the relay
+        run: |
+          set -euo pipefail
+          OIDC=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=gravityline-deploy" | jq -r .value)
+          RESP=$(curl -sS --fail-with-body -X POST https://gravityline-ci.pages.dev/token \
+            -H 'content-type: application/json' -d "{\"token\":\"$OIDC\"}")
+          TOKEN=$(jq -r .apiToken <<<"$RESP")
+          echo "::add-mask::$TOKEN"
+          {
+            echo "CLOUDFLARE_API_TOKEN=$TOKEN"
+            echo "CLOUDFLARE_ACCOUNT_ID=$(jq -r .accountId <<<"$RESP")"
+            echo "PAGES_PROJECT=$(jq -r .project <<<"$RESP")"
+          } >> "$GITHUB_ENV"
+
+      - name: Assemble the site
+        run: |
+          set -euo pipefail
+          mkdir -p site && cp index.html sw.js manifest.json reset.html icon*.png icon.svg site/
+          test -f "$SITE/index.html"
+
+      - name: Publish
+        run: |
+          set -euo pipefail
+          npx --yes wrangler@4 pages deploy "$SITE" --project-name "$PAGES_PROJECT" --branch main \
+            --commit-hash "$GITHUB_SHA" --commit-message "$(git log -1 --format=%s)" --commit-dirty=false
+
+      - name: Confirm the live site is this commit
+        run: |
+          set -euo pipefail
+          live=$(curl -sS -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/pages/projects/$PAGES_PROJECT" \
+            | jq -r .result.canonical_deployment.deployment_trigger.metadata.commit_hash)
+          echo "live $live, this commit $GITHUB_SHA"
+          [ "$live" = "$GITHUB_SHA" ]
+          # The site is public, so the bytes can be checked too.
+          sleep 8
+          want=$(sha256sum "$SITE/index.html" | cut -d' ' -f1)
+          got=$(curl -sSL "https://ledger-80o.pages.dev/?v=$GITHUB_SHA" | sha256sum | cut -d' ' -f1)
+          echo "index.html built $want, live $got"
+          [ "$want" = "$got" ]
