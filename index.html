@@ -126,6 +126,36 @@ header .wrap > .mastbtn, header .wrap > .menu{flex-shrink:0}
   .count .w{display:none}
   .count .waitlink{color:var(--amber)}
 }
+/* ---------- the backup guard: a banner that cannot be missed ---------- */
+.guard{
+  flex-shrink:0;
+  background:linear-gradient(90deg,rgba(206,75,55,0.16),rgba(206,75,55,0.06));
+  border-top:1px solid rgba(206,75,55,0.45);
+  border-bottom:1px solid rgba(206,75,55,0.45);
+}
+.guard[hidden]{display:none}
+.guard .wrap{display:flex;align-items:center;gap:0.75rem;padding:0.7rem var(--gut)}
+.guard .gled{
+  flex-shrink:0;width:7px;height:7px;transform:rotate(45deg);
+  background:var(--ember);animation:ember 3s ease-in-out infinite;
+}
+.guard .gtxt{
+  flex:1;min-width:0;
+  font-family:'Jost',sans-serif;font-weight:300;font-size:0.76rem;line-height:1.35;
+  color:#F6E3DC;letter-spacing:0.01em;
+}
+.guard .gtxt b{font-weight:400;color:#fff}
+.guard .gact{
+  flex-shrink:0;background:none;cursor:pointer;
+  border:1px solid rgba(206,75,55,0.6);color:#F6E3DC;
+  font-family:'Jost',sans-serif;font-weight:400;
+  font-size:0.6rem;letter-spacing:0.18em;text-transform:uppercase;
+  padding:0.5rem 0.7rem;
+}
+.guard .gact:active{background:rgba(206,75,55,0.2)}
+@media (prefers-reduced-motion:reduce){ .guard .gled{animation:none} }
+/* a settled backup says so quietly in the menu */
+.synced.on .led{background:var(--gold)}
 /* ---------- urgent ---------- */
 :root{--ember:#CE4B37}
 .hot{
@@ -914,6 +944,14 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </header>
 
 
+<div class="guard" id="guard" hidden>
+  <div class="wrap">
+    <span class="gled" aria-hidden="true"></span>
+    <span class="gtxt" id="guardTxt" role="status"></span>
+    <button class="gact" id="guardAct"></button>
+  </div>
+</div>
+
 <nav id="nav"><div class="wrap" id="navwrap"></div></nav>
 
 <main id="scroller"><div class="wrap" id="stage"></div></main>
@@ -1069,7 +1107,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v21';
+const APP_VERSION = 'v22';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -1758,6 +1796,7 @@ document.getElementById('sideBtn').onclick = () => switchSide(nextSide());
 
 function render(){
   renderSides();
+  renderGuard();
   if(hotUp()) renderHot();
   if(WIDE.matches) renderWide(); else renderNarrow();
   if(refocus && WIDE.matches){
@@ -2662,6 +2701,94 @@ function reflectSyncButtons(){
   if(on) setStatus('on', 'OneDrive connected'); else setStatus('off', 'Not backed up');
 }
 
+/* ---------- backup guard ----------
+   The connection state used to live only inside the menu, so a dead token was
+   invisible until someone went looking. It now owns a banner on the main
+   screen that cannot be dismissed while the backup is not working. */
+const LOSTKEY   = KEY + '.ms.lost';     /* when a live connection was lost */
+const FAILKEY   = KEY + '.ms.fail';     /* when writes started failing */
+const PENDKEY   = KEY + '.ms.pending';  /* when the oldest unsaved edit was made */
+const EVERKEY   = KEY + '.ms.ever';     /* this device has been connected before */
+const STALE_MS  = 36 * 3600 * 1000;     /* connected, but nothing written this long */
+const HEARTBEAT_MS = 12 * 3600 * 1000;  /* touch the cloud copy at least this often */
+
+function stampGet(k){ try{ return +localStorage.getItem(k) || 0; }catch(e){ return 0; } }
+function stampSet(k, v){
+  try{ v ? localStorage.setItem(k, String(v)) : localStorage.removeItem(k); }catch(e){}
+}
+
+function markConnected(){
+  stampSet(EVERKEY, stampGet(EVERKEY) || Date.now());
+  stampSet(LOSTKEY, 0); stampSet(FAILKEY, 0);
+}
+/* called when the refresh token is gone for good */
+function markLost(){ if(!stampGet(LOSTKEY)) stampSet(LOSTKEY, Date.now()); }
+function markFailing(){ if(!stampGet(FAILKEY)) stampSet(FAILKEY, Date.now()); }
+function markSaved(){ stampSet(FAILKEY, 0); stampSet(PENDKEY, 0); }
+function markPending(){ if(!stampGet(PENDKEY)) stampSet(PENDKEY, Date.now()); }
+
+function ago(t){
+  if(!t) return 'never';
+  const m = Math.round((Date.now() - t) / 60000);
+  if(m < 2) return 'just now';
+  if(m < 60) return m + ' minutes ago';
+  const h = Math.round(m / 60);
+  if(h < 24) return h === 1 ? 'an hour ago' : h + ' hours ago';
+  const d = Math.round(h / 24);
+  return d === 1 ? 'yesterday' : d + ' days ago';
+}
+
+/* The single source of truth for whether the ledger is safe. */
+function backupHealth(){
+  const saved = localSavedAt();
+  const items = localItemCount();
+  if(!SYNC.on){
+    if(stampGet(EVERKEY)) return { state:'expired', saved };
+    return { state:'off', saved };
+  }
+  if(stampGet(FAILKEY)) return { state:'failing', saved };
+  if(items && saved && Date.now() - saved > STALE_MS) return { state:'stale', saved };
+  if(items && !saved) return { state:'stale', saved };
+  return { state:'ok', saved };
+}
+
+function renderGuard(){
+  const g = document.getElementById('guard');
+  const txt = document.getElementById('guardTxt');
+  const act = document.getElementById('guardAct');
+  const h = backupHealth();
+  if(h.state === 'ok'){ g.hidden = true; return; }
+
+  const pend = stampGet(PENDKEY);
+  const unsaved = pend ? ' Edits since ' + ago(pend) + ' are on this phone only.' : '';
+  let msg, label, onclick;
+
+  if(h.state === 'off'){
+    msg = '<b>Not backed up.</b> Everything is on this phone only.';
+    label = 'Connect'; onclick = msSignIn;
+  }else if(h.state === 'expired'){
+    msg = '<b>Backup stopped.</b> The OneDrive sign-in expired, last saved ' + ago(h.saved) + '.' + unsaved;
+    label = 'Reconnect'; onclick = msSignIn;
+  }else if(h.state === 'failing'){
+    msg = '<b>Backup failing.</b> Last saved ' + ago(h.saved) + '.' + unsaved;
+    label = 'Retry'; onclick = () => cloudPush(true);
+  }else{
+    msg = '<b>Not backed up ' + ago(h.saved) + '.</b>' + unsaved;
+    label = 'Back up'; onclick = () => cloudPush(true);
+  }
+  txt.innerHTML = msg;
+  act.textContent = label;
+  act.onclick = onclick;
+  g.hidden = false;
+}
+
+/* Reconnecting without asking was tried and taken out. A prompt=none request at
+   the top level does not reliably bounce back with an error: Microsoft can
+   answer with its own error page, which strands the app behind a screen the
+   banner cannot reach. Doing it in a hidden iframe fails anyway in a browser
+   that blocks third-party cookies, which is the one this runs in. So a dead
+   sign-in raises the banner and costs one tap, and the tap is honest. */
+
 /* ---------- PKCE ---------- */
 function b64url(buf){
   let s = '';
@@ -2694,9 +2821,11 @@ async function msToken(body){
   return j;
 }
 
-async function msSignIn(){
+let lastAuthUrl = '';
+async function msSignIn(opts){
   const verifier = randStr(48);
   const state    = randStr(12);
+  const silent   = false;
   /* localStorage, not sessionStorage: an installed PWA can come back from the
      sign-in redirect in a fresh session and a lost verifier is a dead end.
      It is removed the moment the code is exchanged. */
@@ -2711,7 +2840,10 @@ async function msSignIn(){
     code_challenge_method: 'S256',
     state: state,
   });
-  location.href = 'https://login.microsoftonline.com/' + MS.tenant + '/oauth2/v2.0/authorize?' + p.toString();
+  /* a reconnect knows who it is for, which skips the account picker */
+  if(silent || SYNC.who) p.set('login_hint', SYNC.who || (readAuth() || {}).who || '');
+  lastAuthUrl = 'https://login.microsoftonline.com/' + MS.tenant + '/oauth2/v2.0/authorize?' + p.toString();
+  location.href = lastAuthUrl;
 }
 
 /* Runs on every boot. Returns true when a sign-in has just completed. */
@@ -2726,7 +2858,15 @@ async function msHandleRedirect(){
   try{ localStorage.removeItem(PKCEKEY); }catch(e){}
   history.replaceState(null, '', redirectUri());
 
-  if(err){ setStatus('err', 'Sign-in was cancelled'); return false; }
+  if(err){
+    /* login_required and friends come back from prompt=none when the Microsoft
+       session has gone too. Nothing was cancelled; the banner takes it from here. */
+    const quiet = /login_required|interaction_required|consent_required/.test(err);
+    markLost();
+    setStatus('err', quiet ? 'Sign in again to back up' : 'Sign-in was cancelled');
+    renderGuard();
+    return false;
+  }
   if(!saved || saved.state !== q.get('state')){ setStatus('err', 'Sign-in did not match'); return false; }
 
   try{
@@ -2739,6 +2879,7 @@ async function msHandleRedirect(){
       scope: MS.scope,
     });
     saveTokens(j);
+    markConnected();
     await msIdentify();
     return true;
   }catch(e){
@@ -2764,7 +2905,7 @@ async function msAccess(){
   }catch(e){
     /* invalid_grant means the refresh token is spent or revoked. Anything else
        is most likely the network, and the tokens are worth keeping. */
-    if(String(e.message).indexOf('invalid_grant') === 0){ writeAuth(null); setCtag(null); }
+    if(String(e.message).indexOf('invalid_grant') === 0){ writeAuth(null); setCtag(null); markLost(); renderGuard(); }
     return null;
   }
 }
@@ -2840,7 +2981,7 @@ async function cloudPull(){
       setSavedAt(cloudStamp);
       render();
       if(pipe.classList.contains('up')) renderPipe();
-      SYNC.busy = false; setStatus('on', 'Up to date');
+      SYNC.busy = false; setStatus('on', 'Up to date'); renderGuard();
       return true;
     }
 
@@ -2851,7 +2992,9 @@ async function cloudPull(){
     return true;
   }catch(e){
     SYNC.busy = false;
+    if(e.message === 'signed-out') markLost();
     setStatus('err', e.message === 'signed-out' ? 'Sign in again' : 'Could not read OneDrive');
+    renderGuard();
     return false;
   }
 }
@@ -2882,14 +3025,17 @@ async function cloudPush(force){
     const m = await res.json();
     setCtag(m.cTag || m.eTag || null);
     setSavedAt(payload.savedAt);
+    markSaved();
     setDirty(false);
     conflictPending = false;
-    SYNC.busy = false; setStatus('on', 'Saved to OneDrive');
+    SYNC.busy = false; setStatus('on', 'Saved to OneDrive'); renderGuard();
     dailyBackup(body);
     return true;
   }catch(e){
     SYNC.busy = false;
+    if(e.message === 'signed-out') markLost(); else markFailing();
     setStatus('err', e.message === 'signed-out' ? 'Sign in again' : 'Could not save to OneDrive');
+    renderGuard();
     return false;
   }
 }
@@ -3016,6 +3162,7 @@ let dirty = (function(){ try{ return !!localStorage.getItem(DIRTYKEY); }catch(e)
 /* debounced auto-push after edits */
 let pushTimer = null;
 function scheduleSync(){
+  markPending();
   if(!SYNC.on) return;
   setDirty(true);
   setStatus('busy', 'Saving\u2026');
@@ -3324,15 +3471,21 @@ reflectSyncButtons();
 (async () => {
   const justSignedIn = await msHandleRedirect();
   reflectSyncButtons();
-  if(!SYNC.on) return;
+  renderGuard();
+  if(!SYNC.on){ renderGuard(); return; }
   if(justSignedIn){
     /* first sign-in on a wiped browser: take whatever is up there. On a device
        that already holds the ledger, dirty decides and nothing is lost. */
     if(dirty) await cloudPush(false); else await cloudPull();
     openSyncSheet();
   }else{
-    if(dirty) cloudPush(false); else cloudPull();
+    if(dirty) await cloudPush(false); else await cloudPull();
+    /* Touch the copy at least twice a day even with nothing to say, so that a
+       stale file in OneDrive means a broken backup rather than a quiet week.
+       The watchdog outside the app reads exactly this. */
+    if(SYNC.on && localItemCount() && Date.now() - localSavedAt() > HEARTBEAT_MS) await cloudPush(true);
   }
+  renderGuard();
 })();
 
 document.addEventListener('visibilitychange', () => {

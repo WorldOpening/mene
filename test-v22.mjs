@@ -6,12 +6,12 @@ let pass = 0, fail = 0;
 const ok = (n, c) => { c ? pass++ : (fail++, console.log('FAIL: ' + n)); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
-function boot({ store = {}, fetchImpl } = {}) {
+function boot({ store = {}, fetchImpl, search = '' } = {}) {
   const vc = new VirtualConsole(); const errors = [];
   vc.on('jsdomError', e => errors.push(e.message));
   const calls = [];
   const dom = new JSDOM(html, {
-    runScripts: 'dangerously', url: 'https://babylon-global.com/mene/',
+    runScripts: 'dangerously', url: 'https://babylon-global.com/mene/' + search,
     pretendToBeVisual: true, virtualConsole: vc,
     beforeParse(w) {
       w.matchMedia = () => ({ matches:false, addEventListener(){}, removeEventListener(){}, addListener(){}, removeListener(){} });
@@ -348,5 +348,116 @@ function graph(cloud) {
   ok('and the masthead count clears', !d.querySelector('.hotlink'));
 }
 
-console.log('\n=== v21: ' + pass + ' passed, ' + fail + ' failed');
+
+/* ---------- 16. the backup guard ---------- */
+{
+  const lists = { Fundamental:[item('a','Railcar comps')], Personal:[item('p','Renew visa')] };
+  const base = { 'ledger.v1': JSON.stringify(lists), 'ledger.v1.tabs': JSON.stringify(['Fundamental','Personal']),
+                 'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Personal:'gen' }) };
+  const auth = { rt:'RT', at:'AT', exp: Date.now()+6e5, who:'diwik@babylon-global.com', folder:'Ledger' };
+  const hrs = n => Date.now() - n * 3600 * 1000;
+
+  /* never connected */
+  {
+    const { d } = boot({ store: base });
+    const g = d.getElementById('guard');
+    ok('a never-connected ledger says so on the main screen', !g.hidden);
+    ok('it names the risk plainly', /Not backed up/.test(g.textContent) && /this phone only/i.test(g.textContent));
+    ok('and offers to connect', d.getElementById('guardAct').textContent === 'Connect');
+    ok('the banner is not inside the menu', !d.getElementById('sheet').contains(g));
+    ok('it cannot be dismissed', !g.querySelector('[aria-label*="ismiss"], .close, .gdismiss'));
+  }
+
+  /* connected and current: no banner at all */
+  {
+    const { d } = boot({ store: { ...base, 'ledger.v1.ms': JSON.stringify(auth),
+      'ledger.v1.ms.savedAt': String(Date.now()), 'ledger.v1.ms.ever': String(hrs(100)) } });
+    ok('a healthy backup shows no banner', d.getElementById('guard').hidden);
+  }
+
+  /* the sign-in expired: this is the case that bit him */
+  {
+    const { d, g } = boot({ store: { ...base, 'ledger.v1.ms.ever': String(hrs(100)),
+      'ledger.v1.ms.savedAt': String(hrs(70)), 'ledger.v1.ms.lost': String(hrs(68)),
+      'ledger.v1.ms.pending': String(hrs(66)) } });
+    const el = d.getElementById('guard');
+    ok('an expired sign-in raises the banner', !el.hidden);
+    ok('it says the backup stopped', /Backup stopped/.test(el.textContent));
+    ok('it says how long ago it last saved', /3 days ago/.test(el.textContent));
+    ok('it warns the edits since are only local', /only/.test(el.textContent));
+    ok('and offers to reconnect', d.getElementById('guardAct').textContent === 'Reconnect');
+    ok('health reads expired, not off', g('backupHealth().state') === 'expired');
+  }
+
+  /* connected, but writes are failing */
+  {
+    const { d, g } = boot({ store: { ...base, 'ledger.v1.ms': JSON.stringify(auth),
+      'ledger.v1.ms.ever': String(hrs(100)), 'ledger.v1.ms.savedAt': String(hrs(5)),
+      'ledger.v1.ms.fail': String(hrs(4)) } });
+    ok('failing writes raise the banner', !d.getElementById('guard').hidden);
+    ok('it says failing', /Backup failing/.test(d.getElementById('guard').textContent));
+    ok('and offers a retry', d.getElementById('guardAct').textContent === 'Retry');
+    ok('health reads failing', g('backupHealth().state') === 'failing');
+  }
+
+  /* connected and quiet, but nothing has reached OneDrive in days */
+  {
+    const { d, g } = boot({ store: { ...base, 'ledger.v1.ms': JSON.stringify(auth),
+      'ledger.v1.ms.ever': String(hrs(200)), 'ledger.v1.ms.savedAt': String(hrs(40)) } });
+    ok('a stale copy raises the banner even while connected', !d.getElementById('guard').hidden);
+    ok('health reads stale', g('backupHealth().state') === 'stale');
+  }
+
+  /* an edit while disconnected starts the clock, and saving clears everything */
+  {
+    const { w, d, g } = boot({ store: { ...base, 'ledger.v1.ms.ever': String(hrs(100)),
+      'ledger.v1.ms.savedAt': String(hrs(70)), 'ledger.v1.ms.lost': String(hrs(68)) } });
+    ok('no pending clock before an edit', !w.localStorage.getItem('ledger.v1.ms.pending'));
+    g("scheduleSync()");
+    ok('an edit while disconnected starts the clock', !!w.localStorage.getItem('ledger.v1.ms.pending'));
+    g("markSaved(); setSavedAt(Date.now()); renderGuard();");
+    ok('a successful save clears the pending clock', !w.localStorage.getItem('ledger.v1.ms.pending'));
+    ok('the banner stays up while still signed out', !d.getElementById('guard').hidden);
+    g(`writeAuth(${JSON.stringify(auth)}); markConnected(); setSavedAt(Date.now()); renderGuard();`);
+    ok('reconnecting takes the banner down', d.getElementById('guard').hidden);
+  }
+}
+
+/* ---------- 17. a dead sign-in never strands the app ---------- */
+{
+  const lists = { Fundamental:[item('a','Railcar comps')] };
+  const base = { 'ledger.v1': JSON.stringify(lists), 'ledger.v1.tabs': JSON.stringify(['Fundamental']) };
+  const hrs = n => Date.now() - n * 3600 * 1000;
+
+  {
+    const { w, d, g } = boot({ store: { ...base, 'ledger.v1.ms.ever': String(hrs(100)), 'ledger.v1.ms.lost': String(hrs(2)) } });
+    await wait(80);
+    ok('opening with a dead token redirects nowhere', g("lastAuthUrl") === '');
+    ok('it raises the banner instead', !d.getElementById('guard').hidden);
+    ok('and nothing silent is attempted', !w.localStorage.getItem('ledger.v1.ms.silent'));
+  }
+
+  /* the reconnect tap skips the account picker */
+  {
+    const auth = JSON.stringify({ rt:'', at:'', exp:0, who:'diwik@babylon-global.com' });
+    const { d, g } = boot({ store: { ...base, 'ledger.v1.ms': auth, 'ledger.v1.ms.ever': String(hrs(100)) } });
+    d.getElementById('guardAct').click();
+    await wait(120);
+    const url = g("lastAuthUrl");
+    ok('the reconnect goes to Microsoft', url.indexOf('https://login.microsoftonline.com/') === 0);
+    ok('it carries a login hint', /login_hint=diwik/.test(url));
+    ok('it does not ask for a silent sign-in', !/prompt=none/.test(url));
+  }
+
+  /* a sign-in error still reads correctly */
+  {
+    const { d, g } = boot({ store: { ...base, 'ledger.v1.ms.ever': String(hrs(100)) },
+                            search: '?error=login_required&error_description=x' });
+    await wait(80);
+    ok('an error return raises the banner', !d.getElementById('guard').hidden);
+    ok('health reads expired', g('backupHealth().state') === 'expired');
+  }
+}
+
+console.log('\n=== v22: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);
