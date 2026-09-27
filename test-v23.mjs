@@ -6,7 +6,7 @@ let pass = 0, fail = 0;
 const ok = (n, c) => { c ? pass++ : (fail++, console.log('FAIL: ' + n)); };
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
-function boot({ store = {}, fetchImpl, search = '' } = {}) {
+function boot({ store = {}, fetchImpl, search = '', offline = false } = {}) {
   const vc = new VirtualConsole(); const errors = [];
   vc.on('jsdomError', e => errors.push(e.message));
   const calls = [];
@@ -18,11 +18,15 @@ function boot({ store = {}, fetchImpl, search = '' } = {}) {
       w.fetch = (u, o = {}) => { calls.push([o.method || 'GET', String(u), o.body]); return (fetchImpl || (() => Promise.reject(new Error('offline'))))(u, o); };
       Object.defineProperty(w, 'crypto', { value: webcrypto, configurable: true });
       w.confirm = () => true;
+      if (offline) Object.defineProperty(w.navigator, 'onLine', { get: () => false, configurable: true });
       Object.keys(store).forEach(k => w.localStorage.setItem(k, store[k]));
     },
   });
   const w = dom.window;
-  return { w, d: w.document, errors, calls, g: expr => w.eval(expr) };
+  /* jsdom does not leave the page: every trip to Microsoft reports itself
+     as a navigation it cannot do, which is what counts the redirects */
+  const navs = () => errors.filter(m => /navigation/i.test(m)).length;
+  return { w, d: w.document, errors, calls, navs, g: expr => w.eval(expr) };
 }
 const item = (id, t, extra = {}) => ({ id, t, done:false, wait:false, who:'', since:null, nudged:null, notes:'', subs:[], lt:false, steps:[], ...extra });
 const items = {
@@ -36,7 +40,7 @@ const v10store = {
   'ledger.v1.tab': 'Fundamental',
   'ledger.v1.gh.token': 'old', 'ledger.v1.gh.gist': 'old',
 };
-const signedIn = extra => ({ ...v10store, 'ledger.v1.ms': JSON.stringify({ rt:'RT', at:'AT', exp: Date.now()+6e5, folder:'Ledger' }), ...extra });
+const signedIn = extra => ({ ...v10store, 'ledger.v1.ms': JSON.stringify({ rt:'RT', at:'AT', exp: Date.now()+6e5, folder:'Ledger', signin: Date.now() }), ...extra });
 const j = o => Promise.resolve({ ok:true, status:200, json: async () => o, text: async () => JSON.stringify(o) });
 function graph(cloud) {
   return (url, opts = {}) => {
@@ -160,7 +164,7 @@ function graph(cloud) {
 {
   const cloud = { __ledger:1, v:6, savedAt: Date.now(), order:['Fundamental','Personal'], spaces:{ Fundamental:'fa', Personal:'gen' },
                   lists:{ Fundamental:[item('r','recovered FA item')], Personal:[item('p','recovered own item')] } };
-  const { w, g } = boot({ store: { 'ledger.v1.ms': JSON.stringify({ rt:'RT', at:'AT', exp: Date.now()+6e5, folder:'Ledger' }) }, fetchImpl: graph(cloud) });
+  const { w, g } = boot({ store: { 'ledger.v1.ms': JSON.stringify({ rt:'RT', at:'AT', exp: Date.now()+6e5, folder:'Ledger', signin: Date.now() }) }, fetchImpl: graph(cloud) });
   await wait(600);
   const s = w.localStorage.getItem('ledger.v1');
   ok('wiped browser recovers both sides', s.includes('recovered FA item') && s.includes('recovered own item'));
@@ -354,7 +358,7 @@ function graph(cloud) {
   const lists = { Fundamental:[item('a','Railcar comps')], Personal:[item('p','Renew visa')] };
   const base = { 'ledger.v1': JSON.stringify(lists), 'ledger.v1.tabs': JSON.stringify(['Fundamental','Personal']),
                  'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Personal:'gen' }) };
-  const auth = { rt:'RT', at:'AT', exp: Date.now()+6e5, who:'diwik@babylon-global.com', folder:'Ledger' };
+  const auth = { rt:'RT', at:'AT', exp: Date.now()+6e5, who:'diwik@babylon-global.com', folder:'Ledger', signin: Date.now() };
   const hrs = n => Date.now() - n * 3600 * 1000;
 
   /* never connected */
@@ -430,10 +434,13 @@ function graph(cloud) {
   const hrs = n => Date.now() - n * 3600 * 1000;
 
   {
-    const { w, d, g } = boot({ store: { ...base, 'ledger.v1.ms.ever': String(hrs(100)), 'ledger.v1.ms.lost': String(hrs(2)) } });
+    const { w, d, g, navs } = boot({ store: { ...base, 'ledger.v1.ms.ever': String(hrs(100)), 'ledger.v1.ms.lost': String(hrs(2)) } });
     await wait(80);
-    ok('opening with a dead token redirects nowhere', g("lastAuthUrl") === '');
-    ok('it raises the banner instead', !d.getElementById('guard').hidden);
+    ok('opening with a dead token says it is reconnecting first', !d.getElementById('guard').hidden && /Reconnecting OneDrive/.test(d.getElementById('guard').textContent));
+    ok('and has not left yet', navs() === 0);
+    await wait(700);
+    ok('then goes to Microsoft once', navs() === 1 && g("lastAuthUrl").indexOf('https://login.microsoftonline.com/') === 0);
+    ok('never with prompt=none', !/prompt=none/.test(g("lastAuthUrl")));
     ok('and nothing silent is attempted', !w.localStorage.getItem('ledger.v1.ms.silent'));
   }
 
@@ -459,5 +466,248 @@ function graph(cloud) {
   }
 }
 
-console.log('\n=== v22: ' + pass + ' passed, ' + fail + ' failed');
+/* ---------- 18. the sign-in renews itself ---------- */
+{
+  const lists = { Fundamental:[item('a','Railcar comps')], Personal:[item('p','Renew visa')] };
+  const base = { 'ledger.v1': JSON.stringify(lists), 'ledger.v1.tabs': JSON.stringify(['Fundamental','Personal']),
+                 'ledger.v1.spaces': JSON.stringify({ Fundamental:'fa', Personal:'gen' }) };
+  const hrs = n => Date.now() - n * 3600 * 1000;
+  const mins = n => Date.now() - n * 60000;
+  const who = 'diwik@babylon-global.com';
+  const live = (signin, extra = {}) => ({ ...base,
+    'ledger.v1.ms': JSON.stringify({ rt:'RT', at:'AT', exp: Date.now()+6e5, who, folder:'Ledger', ...(signin ? { signin } : {}) }),
+    'ledger.v1.ms.savedAt': String(Date.now()), 'ledger.v1.ms.ever': String(hrs(200)), ...extra });
+  const dead = extra => ({ ...base, 'ledger.v1.ms': JSON.stringify({ who }),
+    'ledger.v1.ms.ever': String(hrs(200)), 'ledger.v1.ms.savedAt': String(hrs(30)), 'ledger.v1.ms.lost': String(hrs(2)), ...extra });
+  const cloud = { __ledger:1, v:6, savedAt: 1, order:['Fundamental'], lists:{ Fundamental:[item('z','old cloud item')] } };
+  const auth = w => JSON.parse(w.localStorage.getItem('ledger.v1.ms') || 'null');
+  const q = url => new URL(url).searchParams;
+
+  /* a sign-in 21 hours old goes by itself, and says so first */
+  {
+    const { d, g, navs, calls } = boot({ store: live(hrs(21)), fetchImpl: graph(cloud) });
+    await wait(150);
+    const gd = d.getElementById('guard');
+    ok('21 hours: the banner says it is reconnecting', !gd.hidden && /Reconnecting OneDrive/.test(gd.textContent));
+    ok('21 hours: the notice is up before anything leaves', navs() === 0);
+    ok('21 hours: the notice has no button to press', d.getElementById('guardAct').hidden);
+    await wait(900);
+    const url = g("lastAuthUrl");
+    ok('21 hours: exactly one redirect', navs() === 1);
+    ok('21 hours: to the authorize endpoint', url.indexOf('https://login.microsoftonline.com/') === 0 && /\/oauth2\/v2\.0\/authorize\?/.test(url));
+    ok('21 hours: with the account as login_hint', q(url).get('login_hint') === who);
+    ok('21 hours: and no prompt at all', !q(url).has('prompt'));
+    ok('21 hours: the trip is marked automatic', JSON.parse(g("localStorage.getItem('ledger.v1.ms.pkce')")).auto === true);
+    ok('21 hours: the ledger is not written to OneDrive on the way out', !calls.some(c => c[0] === 'PUT'));
+  }
+
+  /* a fresh sign-in stays put */
+  {
+    const { navs, calls } = boot({ store: live(hrs(2)), fetchImpl: graph(cloud) });
+    await wait(1000);
+    ok('2 hours: no redirect', navs() === 0);
+    ok('2 hours: it syncs as usual', calls.some(c => /approot:\/ledger\.json/.test(c[1])));
+  }
+
+  /* installed before the stamp existed */
+  {
+    const { navs, g } = boot({ store: live(0), fetchImpl: graph(cloud) });
+    await wait(1000);
+    ok('no stamp: counts as due, one redirect', navs() === 1 && q(g("lastAuthUrl")).get('login_hint') === who);
+  }
+
+  /* the sign-in is already gone */
+  {
+    const { d, navs, g } = boot({ store: dead() });
+    await wait(150);
+    ok('auth state: reconnecting shown', /Reconnecting OneDrive/.test(d.getElementById('guard').textContent));
+    await wait(900);
+    ok('auth state: one redirect with the hint and no prompt', navs() === 1 && q(g("lastAuthUrl")).get('login_hint') === who && !q(g("lastAuthUrl")).has('prompt'));
+  }
+  {
+    const { navs, g } = boot({ store: { ...dead(), 'ledger.v1.ms': '' } });
+    await wait(1000);
+    ok('no account known: one tap on the picker instead', navs() === 1 && q(g("lastAuthUrl")).get('prompt') === 'select_account' && !q(g("lastAuthUrl")).has('login_hint'));
+  }
+  {
+    const { navs } = boot({ store: { ...dead(), 'ledger.v1.ms.lost': '' } });
+    await wait(1000);
+    ok('signed out from the menu: the app stays put', navs() === 0);
+  }
+
+  /* offline */
+  {
+    const { d, navs } = boot({ store: dead(), offline: true });
+    await wait(1000);
+    ok('offline: no redirect', navs() === 0);
+    ok('offline: the banner stays up', !d.getElementById('guard').hidden && /Backup stopped/.test(d.getElementById('guard').textContent));
+    ok('offline: with its one-tap Reconnect', d.getElementById('guardAct').textContent === 'Reconnect' && !d.getElementById('guardAct').hidden);
+  }
+  {
+    const { navs } = boot({ store: live(hrs(21)), offline: true, fetchImpl: graph(cloud) });
+    await wait(1000);
+    ok('offline with a sign-in due: no redirect', navs() === 0);
+  }
+
+  /* coming back to the front */
+  {
+    const { w, d, navs } = boot({ store: live(hrs(2)), fetchImpl: graph(cloud) });
+    await wait(300);
+    const a = auth(w); a.signin = hrs(21); w.localStorage.setItem('ledger.v1.ms', JSON.stringify(a));
+    const resume = () => d.dispatchEvent(new w.Event('visibilitychange'));
+    const entry = d.getElementById('entry');
+    entry.focus();
+    ok('resume: the add line has focus', d.activeElement === entry);
+    resume();
+    await wait(900);
+    ok('resume while typing: no redirect', navs() === 0);
+    ok('resume while typing: no reconnecting notice either', !/Reconnecting/.test(d.getElementById('guard').textContent));
+    entry.blur();
+    entry.value = 'half written';
+    resume();
+    await wait(900);
+    ok('resume with text left in the add line: no redirect', navs() === 0);
+    entry.value = '';
+    resume();
+    await wait(900);
+    ok('resume with nothing in hand: one redirect', navs() === 1);
+  }
+  {
+    /* typing starts while the notice is up: the trip is called off */
+    const { d, navs } = boot({ store: live(hrs(21)), fetchImpl: graph(cloud) });
+    await wait(150);
+    d.getElementById('entry').focus();
+    await wait(900);
+    ok('typing during the notice calls the trip off', navs() === 0);
+    ok('and the notice goes', d.getElementById('guard').hidden);
+  }
+
+  /* the loop guard */
+  {
+    const { navs } = boot({ store: live(hrs(21), { 'ledger.v1.ms.bounce': String(mins(2)) }), fetchImpl: graph(cloud) });
+    await wait(1000);
+    ok('a second open within 5 minutes: no redirect', navs() === 0);
+  }
+  {
+    const { navs } = boot({ store: live(hrs(21), { 'ledger.v1.ms.bounce': String(mins(6)) }), fetchImpl: graph(cloud) });
+    await wait(1000);
+    ok('after 5 minutes it may go again', navs() === 1);
+  }
+
+  /* an automatic trip that comes back with error= */
+  {
+    const pkce = JSON.stringify({ verifier:'v'.repeat(43), state:'ST', auto:true });
+    const { w, d, g, navs } = boot({ store: dead({ 'ledger.v1.ms.pkce': pkce, 'ledger.v1.ms.bounce': String(mins(1)) }),
+                                     search: '?error=interaction_required&error_description=x&state=ST' });
+    await wait(1000);
+    ok('error return: no automatic redirect', navs() === 0);
+    ok('error return: the back-off starts', +w.localStorage.getItem('ledger.v1.ms.hold') > mins(1));
+    ok('error return: the banner says it plainly', /OneDrive needs you to sign in/.test(d.getElementById('guard').textContent));
+    ok('error return: with Reconnect', d.getElementById('guardAct').textContent === 'Reconnect' && !d.getElementById('guardAct').hidden);
+    ok('error return: the address is cleaned', !/error=/.test(w.location.search));
+    d.getElementById('guardAct').click();
+    await wait(200);
+    ok('a manual Reconnect still goes, back-off or not', navs() === 1 && q(g("lastAuthUrl")).get('login_hint') === who && !q(g("lastAuthUrl")).has('prompt'));
+    ok('a manual trip is not marked automatic', JSON.parse(w.localStorage.getItem('ledger.v1.ms.pkce')).auto === false);
+  }
+  {
+    /* later that day, past the loop guard but inside the six hours */
+    const { d, navs } = boot({ store: dead({ 'ledger.v1.ms.hold': String(hrs(2)), 'ledger.v1.ms.bounce': String(hrs(2)) }) });
+    await wait(1000);
+    ok('inside six hours: no automatic redirect', navs() === 0);
+    ok('inside six hours: the banner still asks', /OneDrive needs you to sign in/.test(d.getElementById('guard').textContent));
+  }
+  {
+    const { d, navs } = boot({ store: live(hrs(21), { 'ledger.v1.ms.hold': String(hrs(2)), 'ledger.v1.ms.bounce': String(hrs(2)) }), fetchImpl: graph(cloud) });
+    await wait(1000);
+    ok('held while the old sign-in still works: no redirect', navs() === 0);
+    ok('held while the old sign-in still works: the banner asks for a tap', !d.getElementById('guard').hidden && /OneDrive needs you to sign in/.test(d.getElementById('guard').textContent) && d.getElementById('guardAct').textContent === 'Reconnect');
+  }
+  {
+    const { navs } = boot({ store: dead({ 'ledger.v1.ms.hold': String(hrs(7)), 'ledger.v1.ms.bounce': String(hrs(7)) }) });
+    await wait(1000);
+    ok('after six hours it goes by itself again', navs() === 1);
+  }
+  {
+    /* a manual trip that is cancelled does not start the back-off */
+    const pkce = JSON.stringify({ verifier:'v'.repeat(43), state:'ST', auto:false });
+    const { w } = boot({ store: dead({ 'ledger.v1.ms.pkce': pkce }), search: '?error=access_denied&state=ST' });
+    await wait(200);
+    ok('a cancelled manual trip does not hold off the next', !w.localStorage.getItem('ledger.v1.ms.hold'));
+  }
+  {
+    const pkce = JSON.stringify({ verifier:'v'.repeat(43), state:'ST', auto:true });
+    const { w, navs } = boot({ store: dead({ 'ledger.v1.ms.pkce': pkce }), search: '?code=C&state=WRONG' });
+    await wait(1000);
+    ok('a state mismatch holds off too', !!w.localStorage.getItem('ledger.v1.ms.hold') && navs() === 0);
+  }
+  {
+    const pkce = JSON.stringify({ verifier:'v'.repeat(43), state:'ST', auto:true });
+    const refuse = (u, o) => /oauth2\/v2\.0\/token/.test(String(u))
+      ? Promise.resolve({ ok:false, status:400, json: async () => ({ error:'invalid_grant' }) }) : graph(cloud)(u, o);
+    const { w, navs } = boot({ store: dead({ 'ledger.v1.ms.pkce': pkce }), search: '?code=C&state=ST', fetchImpl: refuse });
+    await wait(1000);
+    ok('a failed code exchange holds off too', !!w.localStorage.getItem('ledger.v1.ms.hold') && navs() === 0);
+  }
+
+  /* coming back with a code */
+  {
+    const pkce = JSON.stringify({ verifier:'v'.repeat(43), state:'ST', auto:true });
+    const { w, d, g, calls, navs } = boot({
+      store: dead({ 'ledger.v1.ms.pkce': pkce, 'ledger.v1.ms.pending': String(hrs(1)), 'ledger.v1.ms.hold': String(hrs(7)),
+                    'ledger.v1.ms.resume': JSON.stringify({ kind:'item', tab:'Personal', id:'p' }) }),
+      search: '?code=C&state=ST', fetchImpl: graph(cloud) });
+    await wait(150);
+    const t = d.getElementById('toast');
+    ok('code: exchanged for tokens', calls.some(c => /oauth2\/v2\.0\/token/.test(c[1]) && /grant_type=authorization_code/.test(c[2])));
+    ok('code: signin stamped', Math.abs(auth(w).signin - Date.now()) < 5000);
+    ok('code: the toast says so', t.classList.contains('up') && t.textContent === 'OneDrive reconnected');
+    await wait(500);
+    const put = calls.find(c => c[0] === 'PUT' && /approot:\/ledger\.json:\/content/.test(c[1]));
+    ok('code: the sync runs straight away', !!put);
+    ok('code: the edit made while lapsed goes up', !!put && JSON.parse(put[2]).lists.Personal.some(i => i.t === 'Renew visa'));
+    ok('code: the old cloud copy did not win', !w.localStorage.getItem('ledger.v1').includes('old cloud item'));
+    ok('code: the banner comes down', d.getElementById('guard').hidden);
+    ok('code: the back-off is cleared', !w.localStorage.getItem('ledger.v1.ms.hold'));
+    ok('code: no second trip', navs() === 0);
+    ok('code: the open item is put back', d.getElementById('detail').classList.contains('up') && g('openItem && openItem.id') === 'p');
+    ok('code: the menu is not thrown open on a reconnect', !d.getElementById('syncSheet').classList.contains('up'));
+    ok('code: nothing about the sign-in reaches the ledger or the cloud copy',
+       !/signin|RT/.test(w.localStorage.getItem('ledger.v1')) && !/signin/.test(put ? put[2] : ''));
+  }
+  {
+    /* nothing pending: it pulls */
+    const newer = { __ledger:1, v:6, savedAt: Date.now() + 6e4, order:['Fundamental'], lists:{ Fundamental:[item('n','newer cloud item')] } };
+    const pkce = JSON.stringify({ verifier:'v'.repeat(43), state:'ST', auto:true });
+    const { w } = boot({ store: dead({ 'ledger.v1.ms.pkce': pkce }), search: '?code=C&state=ST', fetchImpl: graph(newer) });
+    await wait(700);
+    ok('code with nothing pending: a newer OneDrive copy is pulled', w.localStorage.getItem('ledger.v1').includes('newer cloud item'));
+  }
+
+  /* a refresh keeps the original stamp */
+  {
+    const signin = hrs(3);
+    const { w, calls, navs } = boot({ store: { ...live(signin), 'ledger.v1.ms': JSON.stringify({ rt:'RT0', at:'OLD', exp: Date.now() - 1000, who, folder:'Ledger', signin }) },
+                                      fetchImpl: graph(cloud) });
+    await wait(700);
+    ok('refresh: a refresh ran', calls.some(c => /grant_type=refresh_token/.test(c[2] || '')));
+    ok('refresh: the new token is kept', auth(w).at === 'AT' && auth(w).rt === 'RT');
+    ok('refresh: signin is unchanged', auth(w).signin === signin);
+    ok('refresh: no redirect', navs() === 0);
+  }
+
+  /* the account survives a refused token, for the hint */
+  {
+    const refuse = (u, o) => /oauth2\/v2\.0\/token/.test(String(u))
+      ? Promise.resolve({ ok:false, status:400, json: async () => ({ error:'invalid_grant' }) }) : graph(cloud)(u, o);
+    const { w, g, navs } = boot({ store: { ...live(hrs(3)), 'ledger.v1.ms': JSON.stringify({ rt:'RT0', at:'OLD', exp: Date.now() - 1000, who, folder:'Ledger', signin: hrs(3) }) },
+                                  fetchImpl: refuse });
+    await wait(1200);
+    ok('refused: the refresh token is gone', !auth(w).rt);
+    ok('refused: the account is kept for the hint', auth(w).who === who);
+    ok('refused: and it goes to Microsoft with it', navs() === 1 && q(g("lastAuthUrl")).get('login_hint') === who);
+  }
+}
+
+console.log('\n=== v23: ' + pass + ' passed, ' + fail + ' failed');
 process.exit(fail ? 1 : 0);

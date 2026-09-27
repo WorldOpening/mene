@@ -154,6 +154,22 @@ header .wrap > .mastbtn, header .wrap > .menu{flex-shrink:0}
 }
 .guard .gact:active{background:rgba(206,75,55,0.2)}
 @media (prefers-reduced-motion:reduce){ .guard .gled{animation:none} }
+/* renewing the sign-in is routine, so it wears the side's own colour, not the ember */
+.guard.calm{background:var(--panel);border-color:var(--rule)}
+.guard.calm .gled{background:var(--gold);animation:none}
+.guard.calm .gtxt,.guard.calm .gtxt b{color:var(--ink)}
+/* ---------- a quiet word that goes by itself ---------- */
+.toast{
+  position:fixed;left:50%;bottom:calc(5.4rem + env(safe-area-inset-bottom));z-index:70;
+  transform:translate(-50%,0.4rem);opacity:0;pointer-events:none;
+  transition:opacity .3s ease,transform .3s ease;
+  background:var(--panel);border:1px solid var(--rule);
+  padding:0.55rem 0.9rem;white-space:nowrap;
+  font-family:'Jost',sans-serif;font-weight:400;font-size:0.6rem;
+  letter-spacing:0.18em;text-transform:uppercase;color:var(--gold);
+}
+.toast.up{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){ .toast{transition:none} }
 /* a settled backup says so quietly in the menu */
 .synced.on .led{background:var(--gold)}
 /* ---------- urgent ---------- */
@@ -967,6 +983,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </footer>
 
 <div class="scrim" id="scrim"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <div class="sheet" id="sheet">
   <div class="wrap">
@@ -1107,7 +1124,7 @@ input[type=text]::placeholder{color:var(--dim);letter-spacing:0.05em;font-size:0
 </div>
 
 <script>
-const APP_VERSION = 'v22';
+const APP_VERSION = 'v23';
 const DEFAULT_TABS = ['Fundamental','Lumina','BGIP','Personal'];
 
 /* storage keys — ledger.v1 is permanent and is never renamed */
@@ -2631,7 +2648,7 @@ const MS = {
   file:     'ledger.json',
 };
 
-const AUTHKEY  = KEY + '.ms';        // { rt, at, exp, who, folder }
+const AUTHKEY  = KEY + '.ms';        // { rt, at, exp, who, folder, signin }
 const CTAGKEY  = KEY + '.ms.ctag';
 const BDAYKEY  = KEY + '.ms.bday';
 const PKCEKEY  = KEY + '.ms.pkce';
@@ -2652,12 +2669,27 @@ function readAuth(){
 function writeAuth(a){
   try{ a ? localStorage.setItem(AUTHKEY, JSON.stringify(a)) : localStorage.removeItem(AUTHKEY); }catch(e){}
 }
-function saveTokens(j){
+/* `fresh` marks a code exchange. Only that starts Microsoft's 24 hours; a
+   refreshed token inherits the deadline of the sign-in behind it, so the
+   stamp is left alone on a refresh. */
+function saveTokens(j, fresh){
   const a = readAuth() || {};
   a.at  = j.access_token;
   a.exp = Date.now() + ((j.expires_in || 3600) * 1000) - 120000;
   if(j.refresh_token) a.rt = j.refresh_token;
+  if(fresh) a.signin = Date.now();
+  if(!a.who) a.who = whoFromToken(j.access_token);
   writeAuth(a);
+}
+/* The account named inside the access token, for the reconnect hint when
+   the lookup in msIdentify has not managed it. Some tokens are not readable
+   and that is fine: the answer is then simply unknown. */
+function whoFromToken(t){
+  try{
+    const b = String(t).split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const p = JSON.parse(decodeURIComponent(escape(atob(b))));
+    return p.upn || p.preferred_username || p.unique_name || '';
+  }catch(e){ return ''; }
 }
 function ctag(){ try{ return localStorage.getItem(CTAGKEY) || null; }catch(e){ return null; } }
 function setCtag(v){
@@ -2756,8 +2788,29 @@ function renderGuard(){
   const g = document.getElementById('guard');
   const txt = document.getElementById('guardTxt');
   const act = document.getElementById('guardAct');
+  act.hidden = false;
+  g.classList.remove('calm');
+  if(renewing){
+    g.classList.add('calm');
+    txt.innerHTML = '<b>Reconnecting OneDrive\u2026</b>';
+    act.hidden = true;
+    g.hidden = false;
+    return;
+  }
   const h = backupHealth();
-  if(h.state === 'ok'){ g.hidden = true; return; }
+  if(h.state === 'ok'){
+    /* the backup still works, but the sign-in is near its end and the app
+       has stopped going to Microsoft by itself for now */
+    if(holding() && renewWanted()){
+      g.classList.add('calm');
+      txt.innerHTML = '<b>OneDrive needs you to sign in.</b> Backups carry on until the current sign-in runs out.';
+      act.textContent = 'Reconnect';
+      act.onclick = () => msSignIn();
+      g.hidden = false;
+      return;
+    }
+    g.hidden = true; return;
+  }
 
   const pend = stampGet(PENDKEY);
   const unsaved = pend ? ' Edits since ' + ago(pend) + ' are on this phone only.' : '';
@@ -2765,10 +2818,14 @@ function renderGuard(){
 
   if(h.state === 'off'){
     msg = '<b>Not backed up.</b> Everything is on this phone only.';
-    label = 'Connect'; onclick = msSignIn;
+    label = 'Connect'; onclick = () => msSignIn();
   }else if(h.state === 'expired'){
-    msg = '<b>Backup stopped.</b> The OneDrive sign-in expired, last saved ' + ago(h.saved) + '.' + unsaved;
-    label = 'Reconnect'; onclick = msSignIn;
+    /* after a trip to Microsoft came back refused, the app stops going by
+       itself for a while and says plainly that it needs a tap */
+    msg = holding()
+      ? '<b>OneDrive needs you to sign in.</b> Last saved ' + ago(h.saved) + '.' + unsaved
+      : '<b>Backup stopped.</b> The OneDrive sign-in expired, last saved ' + ago(h.saved) + '.' + unsaved;
+    label = 'Reconnect'; onclick = () => msSignIn();
   }else if(h.state === 'failing'){
     msg = '<b>Backup failing.</b> Last saved ' + ago(h.saved) + '.' + unsaved;
     label = 'Retry'; onclick = () => cloudPush(true);
@@ -2782,12 +2839,125 @@ function renderGuard(){
   g.hidden = false;
 }
 
-/* Reconnecting without asking was tried and taken out. A prompt=none request at
-   the top level does not reliably bounce back with an error: Microsoft can
-   answer with its own error page, which strands the app behind a screen the
-   banner cannot reach. Doing it in a hidden iframe fails anyway in a browser
-   that blocks third-party cookies, which is the one this runs in. So a dead
-   sign-in raises the banner and costs one tap, and the tap is honest. */
+/* ---------- renewing the sign-in ----------
+   Microsoft ends a browser app's refresh token 24 hours after the sign-in
+   that issued it, and every refresh inherits that deadline. So once a day
+   the sign-in itself has to run again in the page. While the browser still
+   has a live session at Microsoft, a trip to the authorize endpoint with the
+   account as login_hint and no prompt comes straight back with a code in
+   about a second, with nothing to press. When that session has ended too,
+   Microsoft shows its sign-in page, which is the one step no app can skip.
+   So the app makes the trip by itself when it opens or comes back to the
+   front with the sign-in 20 hours old or already lost, and says so first.
+
+   prompt=none stays out. It was tried here and taken out: at the top level
+   it does not reliably bounce back with an error, and Microsoft can answer
+   with its own error page, which strands the app behind a screen the banner
+   cannot reach. A hidden iframe fails anyway in a browser that blocks
+   third-party cookies. Without prompt, the worst case is Microsoft's
+   ordinary sign-in page. */
+const RENEW_MS     = 20 * 3600 * 1000;  /* renew a sign-in older than this, well before the 24 hours */
+const BOUNCE_GAP   = 5 * 60 * 1000;     /* at most one automatic trip in this long, so it cannot loop */
+const HOLD_MS      = 6 * 3600 * 1000;   /* after a trip came back refused, wait this long before the next */
+const RENEW_SHOW_MS = 500;              /* long enough to read "Reconnecting" before the page goes */
+const BOUNCEKEY = KEY + '.ms.bounce';   /* when the last trip to Microsoft left */
+const HOLDKEY   = KEY + '.ms.hold';     /* when an automatic trip last came back refused */
+const RESUMEKEY = KEY + '.ms.resume';   /* the item that was open, put back after the trip */
+
+let renewing = false;       /* the page is about to leave for Microsoft */
+let reconnected = false;    /* this load finished a sign-in on a device that had one before */
+
+/* A device signed in before the stamp existed cannot know its deadline, so
+   it counts as due. */
+function signinDue(){
+  const a = readAuth();
+  if(!a || !a.rt) return false;
+  return !a.signin || Date.now() - a.signin > RENEW_MS;
+}
+function holding(){ const t = stampGet(HOLDKEY); return !!t && Date.now() - t < HOLD_MS; }
+
+/* A trip is wanted when the sign-in is close to its deadline, or when it has
+   been lost. A sign-out from the menu is a choice, not a loss, and never
+   sends the app off by itself. */
+function renewWanted(){
+  if(SYNC.on) return signinDue();
+  return backupHealth().state === 'expired' && !!stampGet(LOSTKEY);
+}
+
+/* Anything a reload would cost. Edits are written through as they are made,
+   but text in an add line is not kept until Enter, and a write to OneDrive
+   cut off halfway can land without this device learning the new tag. */
+function busyHere(){
+  const el = document.activeElement;
+  if(el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return true;
+  const lines = document.querySelectorAll('#entry, #newTabIn, .compose input, .subadd input');
+  for(const i of lines) if(i.value && i.value.trim()) return true;
+  return SYNC.busy;
+}
+
+function renewBlocked(){
+  /* offline, the trip would land on the browser's own error page */
+  if(navigator.onLine === false) return 'offline';
+  if(busyHere()) return 'busy';
+  if(Date.now() - stampGet(BOUNCEKEY) < BOUNCE_GAP) return 'recent';
+  if(holding()) return 'hold';
+  return '';
+}
+
+/* Returns true when the page is on its way to Microsoft. When a guard holds
+   it back, the banner stays as it is, with its one-tap Reconnect. */
+function autoReconnect(){
+  if(renewing || !renewWanted() || renewBlocked()) return false;
+  renewing = true;
+  renderGuard();
+  setStatus('busy', 'Reconnecting OneDrive\u2026');
+  setTimeout(async () => {
+    /* anything started while the notice was up comes first */
+    if(renewBlocked()) return stayHere();
+    try{ await msSignIn({ auto: true }); }
+    catch(e){ stayHere(); }
+  }, RENEW_SHOW_MS);
+  return true;
+}
+/* The trip was called off, so the sync it stood in for runs now. */
+function stayHere(){
+  renewing = false;
+  reflectSyncButtons();
+  renderGuard();
+  if(SYNC.on && !SYNC.busy) dirty ? cloudPush(false) : cloudPull();
+}
+
+/* Back from Microsoft through the browser's back button, the page can be
+   restored as it was left, notice and all. */
+window.addEventListener('pageshow', e => {
+  if(e.persisted && renewing) stayHere();
+});
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('up');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove('up'), 2600);
+}
+
+/* The one piece of view worth keeping across the trip: the item or project
+   that was open. The panel and side are already remembered. */
+function saveView(){
+  try{
+    const v = openItem ? { kind:'item', tab: openTab, id: openItem.id }
+            : openProj ? { kind:'proj', tab: openProjTab, id: openProj.id } : null;
+    v ? localStorage.setItem(RESUMEKEY, JSON.stringify(v)) : localStorage.removeItem(RESUMEKEY);
+  }catch(e){}
+}
+function restoreView(){
+  let v = null;
+  try{ v = JSON.parse(localStorage.getItem(RESUMEKEY) || 'null'); localStorage.removeItem(RESUMEKEY); }catch(e){}
+  if(!v || !Array.isArray(data[v.tab])) return;
+  const it = data[v.tab].find(i => i && i.id === v.id);
+  if(!it) return;
+  if(v.kind === 'proj') openProject(v.tab, it); else openDetail(v.tab, it);
+}
 
 /* ---------- PKCE ---------- */
 function b64url(buf){
@@ -2823,13 +2993,22 @@ async function msToken(body){
 
 let lastAuthUrl = '';
 async function msSignIn(opts){
+  const auto     = !!(opts && opts.auto);
   const verifier = randStr(48);
   const state    = randStr(12);
-  const silent   = false;
   /* localStorage, not sessionStorage: an installed PWA can come back from the
      sign-in redirect in a fresh session and a lost verifier is a dead end.
-     It is removed the moment the code is exchanged. */
-  try{ localStorage.setItem(PKCEKEY, JSON.stringify({ verifier, state })); }catch(e){}
+     It is removed the moment the code is exchanged. `auto` tells the return
+     whether the app went by itself, which decides the back-off. */
+  try{ localStorage.setItem(PKCEKEY, JSON.stringify({ verifier, state, auto })); }catch(e){}
+  /* Every edit is written through as it is made, so this only makes sure,
+     and never over storage that failed to read cleanly. */
+  if(loadClean) _save();
+  saveView();
+  /* A trip that was just cancelled at Microsoft should not be followed by an
+     automatic one the moment the app comes back to the front, so every trip
+     counts for the loop guard. Only a tap goes regardless. */
+  stampSet(BOUNCEKEY, Date.now());
   const p = new URLSearchParams({
     client_id: MS.clientId,
     response_type: 'code',
@@ -2840,10 +3019,13 @@ async function msSignIn(opts){
     code_challenge_method: 'S256',
     state: state,
   });
-  /* a reconnect knows who it is for, which skips the account picker */
-  if(silent || SYNC.who) p.set('login_hint', SYNC.who || (readAuth() || {}).who || '');
+  /* A reconnect knows who it is for, which skips the account picker and lets
+     a live Microsoft session answer with no screen at all. With no account
+     known, the picker is one tap. prompt=none is never sent (see above). */
+  const hint = SYNC.who;
+  if(hint) p.set('login_hint', hint); else p.set('prompt', 'select_account');
   lastAuthUrl = 'https://login.microsoftonline.com/' + MS.tenant + '/oauth2/v2.0/authorize?' + p.toString();
-  location.href = lastAuthUrl;
+  location.assign(lastAuthUrl);
 }
 
 /* Runs on every boot. Returns true when a sign-in has just completed. */
@@ -2858,16 +3040,25 @@ async function msHandleRedirect(){
   try{ localStorage.removeItem(PKCEKEY); }catch(e){}
   history.replaceState(null, '', redirectUri());
 
+  /* Whether the app went by itself. A refused automatic trip holds the next
+     one off for six hours; a tap on Reconnect always goes. With the verifier
+     lost there is no telling, and counting it as automatic is what stops a
+     device that keeps losing it from going round in circles. */
+  const auto = saved ? !!saved.auto : true;
+  const refused = () => { if(auto) stampSet(HOLDKEY, Date.now()); };
+
   if(err){
-    /* login_required and friends come back from prompt=none when the Microsoft
-       session has gone too. Nothing was cancelled; the banner takes it from here. */
+    /* The sign-in was stopped at Microsoft: cancelled there, or refused by a
+       policy that wants something done first. Nothing here is lost, and the
+       banner takes it from here. */
     const quiet = /login_required|interaction_required|consent_required/.test(err);
+    refused();
     markLost();
     setStatus('err', quiet ? 'Sign in again to back up' : 'Sign-in was cancelled');
     renderGuard();
     return false;
   }
-  if(!saved || saved.state !== q.get('state')){ setStatus('err', 'Sign-in did not match'); return false; }
+  if(!saved || saved.state !== q.get('state')){ refused(); setStatus('err', 'Sign-in did not match'); return false; }
 
   try{
     const j = await msToken({
@@ -2878,11 +3069,15 @@ async function msHandleRedirect(){
       code_verifier: saved.verifier,
       scope: MS.scope,
     });
-    saveTokens(j);
+    const before = readAuth();
+    reconnected = !!(stampGet(EVERKEY) || (before && (before.rt || before.who)));
+    saveTokens(j, true);
     markConnected();
+    stampSet(HOLDKEY, 0);
     await msIdentify();
     return true;
   }catch(e){
+    refused();
     setStatus('err', 'Sign-in failed');
     return false;
   }
@@ -2904,8 +3099,12 @@ async function msAccess(){
     return j.access_token;
   }catch(e){
     /* invalid_grant means the refresh token is spent or revoked. Anything else
-       is most likely the network, and the tokens are worth keeping. */
-    if(String(e.message).indexOf('invalid_grant') === 0){ writeAuth(null); setCtag(null); markLost(); renderGuard(); }
+       is most likely the network, and the tokens are worth keeping. The
+       account is kept as the hint for the reconnect, so it can go through
+       with no screen. */
+    if(String(e.message).indexOf('invalid_grant') === 0){
+      writeAuth(a.who ? { who: a.who } : null); setCtag(null); markLost(); renderGuard();
+    }
     return null;
   }
 }
@@ -2927,7 +3126,7 @@ async function msIdentify(){
   const a = readAuth(); if(!a) return;
   try{
     const me = await gr('/me?$select=displayName,userPrincipalName');
-    if(me.ok){ const j = await me.json(); a.who = j.userPrincipalName || j.displayName || ''; }
+    if(me.ok){ const j = await me.json(); a.who = j.userPrincipalName || j.displayName || a.who || ''; }
     const root = await gr('/me/drive/special/approot');
     if(root.ok){ const j = await root.json(); a.folder = j.name || ''; }
     writeAuth(a);
@@ -3412,6 +3611,9 @@ document.getElementById('syncSave').onclick = async () => {
 document.getElementById('syncForget').onclick = () => {
   writeAuth(null);
   setCtag(null);
+  /* a sign-out is a choice, so the app must not treat it as a lost sign-in
+     and go back to Microsoft by itself */
+  stampSet(LOSTKEY, 0);
   reflectSyncButtons();
   syncMsgEl.className = 'syncmsg';
   syncMsgEl.textContent = 'Signed out on this device. Your OneDrive copy is untouched.';
@@ -3469,26 +3671,42 @@ reflectSyncButtons();
    OneDrive: an edit this device never managed to push outranks the cloud copy,
    so send it up instead of pulling straight over the top of it. */
 (async () => {
+  /* A load that brings a sign-in back never starts another trip, so one
+     stopped at Microsoft cannot loop straight back there. */
+  const returning = /[?&](code|error)=/.test(location.search);
   const justSignedIn = await msHandleRedirect();
   reflectSyncButtons();
   renderGuard();
+  if(returning) restoreView();
+  else if(autoReconnect()) return;
   if(!SYNC.on){ renderGuard(); return; }
-  if(justSignedIn){
+  if(justSignedIn && !reconnected){
     /* first sign-in on a wiped browser: take whatever is up there. On a device
        that already holds the ledger, dirty decides and nothing is lost. */
     if(dirty) await cloudPush(false); else await cloudPull();
     openSyncSheet();
   }else{
-    if(dirty) await cloudPush(false); else await cloudPull();
+    if(justSignedIn) toast('OneDrive reconnected');
+    /* An edit made while the sign-in was lapsed had nowhere to go and never
+       marked the device dirty, so only the pending stamp remembers it. It is
+       still an edit this device never managed to push, so it outranks the
+       cloud copy the same way. */
+    if(dirty || (justSignedIn && stampGet(PENDKEY))) await cloudPush(false); else await cloudPull();
     /* Touch the copy at least twice a day even with nothing to say, so that a
        stale file in OneDrive means a broken backup rather than a quiet week.
        The watchdog outside the app reads exactly this. */
     if(SYNC.on && localItemCount() && Date.now() - localSavedAt() > HEARTBEAT_MS) await cloudPush(true);
   }
+  /* the sync itself may be what found the sign-in refused */
+  if(!returning && autoReconnect()) return;
   renderGuard();
 })();
 
+/* An installed app is more often brought back to the front than opened
+   again, so coming back is when the sign-in is checked as well. */
 document.addEventListener('visibilitychange', () => {
+  if(renewing) return;
+  if(document.visibilityState === 'visible' && autoReconnect()) return;
   if(!SYNC.on || SYNC.busy) return;
   if(document.visibilityState === 'hidden'){
     /* leaving the app is the last safe moment to save an edit still on the
@@ -3496,7 +3714,7 @@ document.addEventListener('visibilitychange', () => {
     if(dirty){ clearTimeout(pushTimer); cloudPush(false); }
     return;
   }
-  if(dirty) cloudPush(false); else cloudPull();
+  (dirty ? cloudPush(false) : cloudPull()).then(() => autoReconnect());
 });
 
 /* ---------- updates ---------- */

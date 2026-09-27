@@ -132,7 +132,7 @@ console.log('\n2. starting sign-in');
 console.log('\n3. returning from sign-in');
 {
   const state = { calls: [], grants: [], puts: [], backupWrites: [], atCount: 0,
-    cloudBody: JSON.stringify({ __ledger: 1, v: 6, order: ['Cloud'], lists: { Cloud: [ { id: 'c1', t: 'From OneDrive', done: false } ] } }) };
+    cloudBody: JSON.stringify({ __ledger: 1, v: 6, savedAt: Date.now(), order: ['Cloud'], lists: { Cloud: [ { id: 'c1', t: 'From OneDrive', done: false } ] } }) };
   const { w } = await boot({
     search: '?code=CODE123&state=ST',
     store: { 'ledger.v1': JSON.stringify(V8_DATA), 'ledger.v1.ms.pkce': JSON.stringify({ verifier: 'v'.repeat(43), state: 'ST' }) },
@@ -168,12 +168,14 @@ console.log('\n4. state mismatch is refused');
 /* ---------------------------------------------------------------- */
 console.log('\n5. an edit pushes, with a dated backup');
 {
+  const T = Date.now();
   const state = { calls: [], grants: [], puts: [], backupWrites: [], atCount: 0,
-    cloudBody: JSON.stringify({ __ledger: 1, v: 6, order: ['Fundamental', 'Personal'], lists: V8_DATA }) };
+    cloudBody: JSON.stringify({ __ledger: 1, v: 6, savedAt: T, order: ['Fundamental', 'Personal'], lists: V8_DATA }) };
   const { w } = await boot({ store: {
     'ledger.v1': JSON.stringify(V8_DATA),
     'ledger.v1.tabs': JSON.stringify(['Fundamental', 'Personal']),
-    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'diwik@babylon-global.com', folder: 'Ledger' }),
+    'ledger.v1.ms.savedAt': String(T),
+    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'diwik@babylon-global.com', folder: 'Ledger', signin: Date.now() }),
     'ledger.v1.ms.ctag': 'ctag-0',
   }, state });
   await settle();
@@ -212,7 +214,7 @@ console.log('\n6. a rejected write never loses data');
   const { w } = await boot({ store: {
     'ledger.v1': JSON.stringify(V8_DATA),
     'ledger.v1.tabs': JSON.stringify(['Fundamental', 'Personal']),
-    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'x', folder: 'Ledger' }),
+    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'x', folder: 'Ledger', signin: Date.now() }),
     'ledger.v1.ms.ctag': 'ctag-0',
   }, state });
   await settle();
@@ -235,7 +237,7 @@ console.log('\n7. restoring an earlier day');
   const { w } = await boot({ store: {
     'ledger.v1': JSON.stringify(V8_DATA),
     'ledger.v1.tabs': JSON.stringify(['Fundamental', 'Personal']),
-    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'x', folder: 'Ledger' }),
+    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'x', folder: 'Ledger', signin: Date.now() }),
   }, state });
   await settle();
   w.document.getElementById('menu').click();
@@ -262,7 +264,7 @@ console.log('\n8. signing out');
   const state = { calls: [], grants: [], puts: [], backupWrites: [], atCount: 0, cloudBody: '{}' };
   const { w } = await boot({ store: {
     'ledger.v1': JSON.stringify(V8_DATA),
-    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'x', folder: 'Ledger' }),
+    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'x', folder: 'Ledger', signin: Date.now() }),
     'ledger.v1.ms.ctag': 'ctag-0',
   }, state });
   await settle();
@@ -281,7 +283,7 @@ console.log('\n9. offline');
   const { w } = await boot({ store: {
     'ledger.v1': JSON.stringify(V8_DATA),
     'ledger.v1.tabs': JSON.stringify(['Fundamental', 'Personal']),
-    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'x', folder: 'Ledger' }),
+    'ledger.v1.ms': JSON.stringify({ rt: 'RT1', who: 'x', folder: 'Ledger', signin: Date.now() }),
   }, state });
   w.fetch = async () => { throw new Error('offline'); };
   const input = w.document.getElementById('entry');
