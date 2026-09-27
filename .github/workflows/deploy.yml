@@ -58,9 +58,14 @@ jobs:
             | jq -r .result.canonical_deployment.deployment_trigger.metadata.commit_hash)
           echo "live $live, this commit $GITHUB_SHA"
           [ "$live" = "$GITHUB_SHA" ]
-          # The site is public, so the bytes can be checked too.
-          sleep 8
+          # The site is public, so the bytes can be checked too. Cloudflare's edge can
+          # serve the previous page for a few seconds after a deploy, so this waits up to
+          # a minute for the new one before calling it a failure.
           want=$(sha256sum "$SITE/index.html" | cut -d' ' -f1)
-          got=$(curl -sSL "https://ledger-80o.pages.dev/?v=$GITHUB_SHA" | sha256sum | cut -d' ' -f1)
+          for i in $(seq 1 12); do
+            got=$(curl -sSL -H 'cache-control: no-cache' "https://ledger-80o.pages.dev/?v=$GITHUB_SHA-$i" | sha256sum | cut -d' ' -f1)
+            if [ "$got" = "$want" ]; then echo "index.html live matches the build ($want)"; exit 0; fi
+            sleep 5
+          done
           echo "index.html built $want, live $got"
-          [ "$want" = "$got" ]
+          exit 1
